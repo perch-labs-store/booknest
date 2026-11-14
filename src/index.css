@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FAF8F4;
+  --surface: #FFFFFF;
+  --border: #E8E6E1;
+  --text-primary: #14181F;
+  --text-secondary: #6B7280;
+  --accent-text: #8A5A12; /* darker gold: ~5:1 on cream */
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0B0B0D;
+  --surface: #151518;
+  --border: #242428;
+  --text-primary: #F5F0E7;
+  --text-secondary: #A9A7B1;
+  --accent-text: #DDB77E;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  @apply bg-bg font-sans text-ink antialiased transition-colors duration-200;
+}
+
+* { @apply border-line; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
