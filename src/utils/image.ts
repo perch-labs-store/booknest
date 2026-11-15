@@ -26,3 +26,6 @@ export async function prepareImage(file: File, maxSide = 1600, minBytes = 1_500_
 
 /** Book covers are shown at most ~300px wide (about 650px on sharp screens), so anything bigger is wasted download. */
 export const prepareCover = (file: File) => prepareImage(file, 900, 150_000, 0.82);
+
+/** Author photos are shown at most ~240px wide, so 800px is plenty. The avatars bucket allows 2MB. */
+export const preparePhoto = (file: File) => prepareImage(file, 800, 200_000, 0.85);

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } fr
 import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, ChevronDown, ImagePlus, Plus, X } from "lucide-react";
 import PageHeader from "../components/PageHeader";
+import AuthorPhotoField from "../components/AuthorPhotoField";
 import { GENRE_FILTERS } from "../data/catalog";
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "../context/AuthModalContext";
@@ -11,6 +12,10 @@ import { FORMAT_LABELS, LINK_FORMATS, STORE_LABELS, normalizeUrl, type LinkForma
 const GENRES = GENRE_FILTERS;
 const LANGUAGES = ["English", "Swahili", "French", "Spanish", "German", "Arabic"] as const;
 const MAX_BYTES = 5 * 1024 * 1024;
+/** Short description (hero, cards, search), the full story, and the author text. Must match the database limits in supabase/schema.sql. */
+const SHORT_MAX = 300;
+const LONG_MAX = 8000;
+const ABOUT_MAX = 1500;
 const TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 interface Form {
@@ -19,6 +24,8 @@ interface Form {
   genre: string;
   language: string;
   description: string;
+  longDescription: string;
+  aboutAuthor: string;
   date: string;
   isbn: string;
   publisher: string;
@@ -26,7 +33,7 @@ interface Form {
   discountEnds: string;
   discountCode: string;
 }
-const EMPTY: Form = { title: "", subtitle: "", genre: "", language: "English", description: "", date: "", isbn: "", publisher: "", discount: "", discountEnds: "", discountCode: "" };
+const EMPTY: Form = { title: "", subtitle: "", genre: "", language: "English", description: "", longDescription: "", aboutAuthor: "", date: "", isbn: "", publisher: "", discount: "", discountEnds: "", discountCode: "" };
 type Errors = Partial<Record<keyof Form | "cover" | "links", string>>;
 
 /** One place where the book can be bought: which version, which store, and the link. */
@@ -86,7 +93,7 @@ export default function AddBook() {
       if (cancelled) return;
       if (b) {
         setForm({
-          title: b.title, subtitle: b.subtitle, genre: b.genre, language: b.language, description: b.description,
+          title: b.title, subtitle: b.subtitle, genre: b.genre, language: b.language, description: b.description, longDescription: b.longDescription, aboutAuthor: b.aboutAuthor,
           date: b.releaseDate, isbn: b.isbn, publisher: b.publisher, discount: b.discountPercent,
           discountEnds: b.discountEnds, discountCode: b.discountCode,
         });
@@ -159,8 +166,11 @@ export default function AddBook() {
       if (!links.some((r, i) => r.url.trim() && !rowErr[i])) er.links = "Add at least one link where people can buy your book.";
       if (!form.genre) er.genre = "Select a genre.";
       if (!form.description.trim()) er.description = "Write a short description.";
-      else if (form.description.trim().length < 20) er.description = "Description needs at least 20 characters.";
+      else if (form.description.trim().length < 20) er.description = "Short description needs at least 20 characters.";
     }
+    if (form.description.trim().length > SHORT_MAX) er.description = `Keep the short description to ${SHORT_MAX} characters or fewer.`;
+    if (form.longDescription.trim().length > LONG_MAX) er.longDescription = `Keep the full description to ${LONG_MAX.toLocaleString("en-US")} characters or fewer.`;
+    if (form.aboutAuthor.trim().length > ABOUT_MAX) er.aboutAuthor = `Keep this to ${ABOUT_MAX.toLocaleString("en-US")} characters or fewer.`;
     return { er, rowErr };
   };
 
@@ -171,7 +181,7 @@ export default function AddBook() {
     setErrors((prev) => ({ cover: prev.cover, ...er }));
     setLinkErrors(rowErr);
     const firstRow = Object.keys(rowErr)[0];
-    const first = (["title", "genre", "description", "isbn", "discount", "discountEnds", "discountCode"] as const).find((k) => er[k]);
+    const first = (["title", "genre", "description", "longDescription", "aboutAuthor", "isbn", "discount", "discountEnds", "discountCode"] as const).find((k) => er[k]);
     if (first || firstRow !== undefined || er.links) {
       const target = first ? id(first) : id(`link-${firstRow ?? 0}-url`);
       document.getElementById(target)?.focus();
@@ -193,6 +203,8 @@ export default function AddBook() {
         genre: form.genre,
         language: form.language,
         description: form.description,
+        longDescription: form.longDescription,
+        aboutAuthor: form.aboutAuthor,
         releaseDate: form.date,
         isbn: form.isbn,
         publisher: form.publisher,
@@ -322,9 +334,34 @@ export default function AddBook() {
         </div>
 
         <div className="mt-4">
-          <Field label="Description" required htmlFor={id("description")} error={errors.description}>
-            <textarea id={id("description")} rows={4} value={form.description} onChange={set("description")} placeholder="Write a short description of your book…" className={`w-full resize-y rounded-lg border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-brand focus:outline-none ${border("description")}`} {...aria("description")} />
+          <Field label="Short Description" required htmlFor={id("description")} error={errors.description}>
+            <textarea id={id("description")} rows={3} maxLength={SHORT_MAX} value={form.description} onChange={set("description")} placeholder="One or two sentences that make someone want to open the book…" className={`w-full resize-y rounded-lg border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-brand focus:outline-none ${border("description")}`} {...aria("description")} />
+            <p className="mt-1 flex justify-between text-xs text-muted">
+              <span>Shown on the home slider, book cards and search results.</span>
+              <span>{form.description.length}/{SHORT_MAX}</span>
+            </p>
           </Field>
+        </div>
+
+        <div className="mt-4">
+          <Field label="Full Description" optional htmlFor={id("longDescription")} error={errors.longDescription}>
+            <textarea id={id("longDescription")} rows={8} maxLength={LONG_MAX} value={form.longDescription} onChange={set("longDescription")} placeholder="Tell the story: what the book is about, who it's for, and what readers will take away…" className={`w-full resize-y rounded-lg border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-brand focus:outline-none ${border("longDescription")}`} {...aria("longDescription")} />
+            <p className="mt-1 flex justify-between text-xs text-muted">
+              <span>Shown on your book's page under "About This Book". Blank lines start a new paragraph.</span>
+              <span>{form.longDescription.length.toLocaleString("en-US")}/{LONG_MAX.toLocaleString("en-US")}</span>
+            </p>
+          </Field>
+        </div>
+
+        <div className="mt-4">
+          <Field label="About the Author" optional htmlFor={id("aboutAuthor")} error={errors.aboutAuthor}>
+            <textarea id={id("aboutAuthor")} rows={4} maxLength={ABOUT_MAX} value={form.aboutAuthor} onChange={set("aboutAuthor")} placeholder="Who are you, and why did you write this book? If you leave this blank, the About text from your profile is used." className={`w-full resize-y rounded-lg border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-brand focus:outline-none ${border("aboutAuthor")}`} {...aria("aboutAuthor")} />
+            <p className="mt-1 flex justify-between text-xs text-muted">
+              <span>Shown on your book's page next to your name.</span>
+              <span>{form.aboutAuthor.length.toLocaleString("en-US")}/{ABOUT_MAX.toLocaleString("en-US")}</span>
+            </p>
+          </Field>
+          {signedIn && <AuthorPhotoField className="mt-3 rounded-xl border border-line p-3" />}
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">

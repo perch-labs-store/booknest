@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Reviews from "../components/Reviews";
 import { useLibrary } from "../context/LibraryContext";
-import { useRemoteVersion } from "../data/remote";
+import { getCachedStory, loadBookStory, useRemoteVersion, type BookStory } from "../data/remote";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BadgeCheck, Bookmark, BookX, Check, Heart, Share2, ShoppingCart, Star } from "lucide-react";
 import Avatar from "../components/Avatar";
+import AuthorPhoto from "../components/AuthorPhoto";
 import AuthorLink from "../components/AuthorLink";
 import GenreTag from "../components/GenreTag";
 import { genresOf, getBookBySlug, getSimilarBooks, type BookDetail } from "../data/allBooks";
@@ -67,25 +68,42 @@ function DetailsCard({ book }: { book: BookDetail }) {
   );
 }
 
-function AuthorCard({ name }: { name: string }) {
+function AuthorCard({ name, about }: { name: string; about?: string }) {
   const author = getAuthorByName(name);
+  const [open, setOpen] = useState(false);
+  const text = (about ?? "").trim();
+  const long = text.length > 260;
   return (
     <aside className="h-fit rounded-2xl border border-line bg-surface p-5">
       <h2 className="font-serif text-lg font-bold text-ink">About the Author</h2>
-      <div className="mt-4 flex items-center gap-4">
-        <Avatar name={name} className="h-16 w-16 text-xl" />
-        <div className="min-w-0">
-          <p className="flex items-center gap-1 font-semibold text-ink">
-            <span className="truncate">{name}</span>
-            {author?.verified && <BadgeCheck size={15} className="shrink-0 fill-info text-white" aria-label="Verified" />}
-          </p>
-          {author ? (
-            <p className="text-xs text-muted">{author.books} Books · {compact(author.followers)} Followers</p>
-          ) : (
-            <p className="text-xs text-muted">Author</p>
-          )}
-        </div>
+      {/* The author's own photo (selfie / portrait), or a coloured contact-style icon when they haven't added one. */}
+      <AuthorPhoto
+        url={author?.photoUrl}
+        seed={author?.id ?? name}
+        alt={`${name}, author`}
+        className="mt-4 aspect-square w-full max-w-[15rem] rounded-2xl"
+      />
+      <div className="mt-4 min-w-0">
+        <p className="flex items-center gap-1 font-semibold text-ink">
+          <span className="truncate">{name}</span>
+          {author?.verified && <BadgeCheck size={15} className="shrink-0 fill-info text-white" aria-label="Verified" />}
+        </p>
+        {author ? (
+          <p className="text-xs text-muted">{author.books} Books · {compact(author.followers)} Followers</p>
+        ) : (
+          <p className="text-xs text-muted">Author</p>
+        )}
       </div>
+      {text && (
+        <>
+          <p className={`mt-4 whitespace-pre-line text-sm leading-relaxed text-ink/90 ${long && !open ? "line-clamp-5" : ""}`}>{text}</p>
+          {long && (
+            <button onClick={() => setOpen((v) => !v)} className="mt-1.5 text-sm font-semibold text-accent hover:underline">
+              {open ? "Show Less" : "Read More"}
+            </button>
+          )}
+        </>
+      )}
       {author && (
         <Link
           to={`/authors/${author.id}`}
@@ -111,6 +129,21 @@ export default function BookDetails() {
 
   const similar = useMemo(() => (book ? getSimilarBooks(book) : []), [book]);
 
+  // The long description and the author text are fetched for this one book only (the home page never needs them).
+  const bookId = book?.id;
+  const [story, setStory] = useState<BookStory | undefined>(() => getCachedStory(bookId));
+  useEffect(() => {
+    setStory(getCachedStory(bookId));
+    if (bookId === undefined) return;
+    let cancelled = false;
+    loadBookStory(bookId).then((st) => {
+      if (!cancelled && st) setStory(st);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookId]);
+
   if (!book) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
@@ -126,8 +159,12 @@ export default function BookDetails() {
   const discount = activeDiscount(book.discount);
   const formatsOnSale = [...new Set(links.map((l) => l.format))].map((f) => FORMAT_LABELS[f]).join(" · ");
   const author = getAuthorByName(book.author);
+  // Short description: top of the page. Full description: the story. Books saved before the split only have the short one.
   const desc = book.description ?? "";
-  const longDesc = desc.length > 220;
+  const story_ = story?.longDescription.trim() || desc;
+  const longDesc = story_.length > 700;
+  const paragraphs = story_.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  const aboutAuthor = story?.aboutAuthor.trim() || author?.about?.trim() || author?.bio?.trim() || "";
 
   const share = async () => {
     try {
@@ -182,7 +219,7 @@ export default function BookDetails() {
               )}
             </div>
 
-            {desc && <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink/90">{desc}</p>}
+            {desc && <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-ink">{desc}</p>}
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {links.length > 0 ? (
@@ -256,9 +293,13 @@ export default function BookDetails() {
           {tab === "About" && (
             <section>
               <h2 className="font-serif text-xl font-bold text-ink">About This Book</h2>
-              {desc ? (
+              {story_ ? (
                 <>
-                  <p className={`mt-2 text-sm leading-relaxed text-ink/90 ${longDesc && !expanded ? "line-clamp-3" : ""}`}>{desc}</p>
+                  <div className={`mt-2 space-y-3 text-sm leading-relaxed text-ink/90 ${longDesc && !expanded ? "max-h-52 overflow-hidden [mask-image:linear-gradient(to_bottom,black_65%,transparent)]" : ""}`}>
+                    {paragraphs.map((para, k) => (
+                      <p key={k} className="whitespace-pre-line">{para}</p>
+                    ))}
+                  </div>
                   {longDesc && (
                     <button onClick={() => setExpanded((v) => !v)} className="mt-2 text-sm font-semibold text-accent hover:underline">
                       {expanded ? "Show Less" : "Show More"}
@@ -314,7 +355,7 @@ export default function BookDetails() {
             ))}
         </div>
 
-        <AuthorCard name={book.author} />
+        <AuthorCard name={book.author} about={aboutAuthor} />
       </div>
       {buying && <BuyModal title={book.title} links={links} discount={discount} onClose={() => setBuying(false)} />}
     </>

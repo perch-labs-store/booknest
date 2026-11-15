@@ -4,6 +4,7 @@ import { BadgeCheck, BarChart3, BookOpen, Camera, Pin, Link as LinkIcon, LogIn, 
 import ConfirmModal from "../components/ConfirmModal";
 import { deleteBook, loadRemote } from "../data/remote";
 import Avatar from "../components/Avatar";
+import AuthorPhotoField from "../components/AuthorPhotoField";
 import BookCard from "../components/BookCard";
 import EditProfileModal from "../components/EditProfileModal";
 import SocialLinks from "../components/SocialLinks";
@@ -238,6 +239,7 @@ function ProfileContent() {
       {tab === "About" && (
         <section className="rounded-2xl border border-line bg-surface p-5">
           <h2 className="font-serif text-xl font-bold text-ink">About {profile.name || "you"}</h2>
+          <AuthorPhotoField className="mt-4 rounded-xl border border-line p-3" />
           {profile.about ? (
             <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-ink/90">{profile.about}</p>
           ) : (

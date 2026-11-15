@@ -10,7 +10,7 @@ import { normalizeUrl, type BookLink, type LinkFormat, type LinkStore } from "./
 import type { Discount } from "./discount";
 import type { SiteDoc } from "./templates";
 import { SUBDOMAIN_RE } from "../lib/host";
-import { prepareCover } from "../utils/image";
+import { prepareCover, preparePhoto } from "../utils/image";
 
 /* ------------------------------------------------------------------ */
 /* Change notifications: pages re-render when the database data loads  */
@@ -68,6 +68,7 @@ interface AuthorRow {
   bio: string | null;
   about: string | null;
   banner_url: string | null;
+  photo_url: string | null;
   featured_book_id: number | null;
   languages: string | null;
   followers_count: number;
@@ -216,7 +217,7 @@ export async function loadRemote(opts: { quick?: boolean } = {}): Promise<void> 
       .from("books")
       .select(`${BOOK_COLS}, created_by, book_links(type, format, url)`)
       .order("created_at", { ascending: false }),
-    supabase.from("authors").select("id, name, genres, bio, about, banner_url, featured_book_id, languages, followers_count, books_count, rating_avg, rating_count, verified, growth_pct, created_at"),
+    supabase.from("authors").select("id, name, genres, bio, about, banner_url, photo_url, featured_book_id, languages, followers_count, books_count, rating_avg, rating_count, verified, growth_pct, created_at"),
   ]);
   if (booksRes.error) {
     console.error("[BookNest] Could not load books:", booksRes.error.message);
@@ -257,6 +258,7 @@ export async function loadRemote(opts: { quick?: boolean } = {}): Promise<void> 
         bio: a.bio ?? "",
         about: a.about ?? undefined,
         bannerUrl: a.banner_url ?? undefined,
+        photoUrl: a.photo_url ?? undefined,
         featuredBookId: a.featured_book_id ?? undefined,
         languages: a.languages ? a.languages.split(" · ") : undefined,
         joinedAt: a.created_at,
@@ -275,6 +277,23 @@ export async function loadRemote(opts: { quick?: boolean } = {}): Promise<void> 
   ready = true;
   resetBookCache();
   notify();
+}
+
+/** The long description and "about the author" text of one book. Fetched only on the book page, so the home page stays light. */
+export interface BookStory {
+  longDescription: string;
+  aboutAuthor: string;
+}
+const storyCache = new Map<number, BookStory>();
+export const getCachedStory = (bookId?: number) => (bookId === undefined ? undefined : storyCache.get(bookId));
+export async function loadBookStory(bookId: number): Promise<BookStory | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("books").select("long_description, about_author").eq("id", bookId).maybeSingle();
+  if (error || !data) return null;
+  const d = data as { long_description: string | null; about_author: string | null };
+  const story = { longDescription: d.long_description ?? "", aboutAuthor: d.about_author ?? "" };
+  storyCache.set(bookId, story);
+  return story;
 }
 
 /**
@@ -306,7 +325,12 @@ export interface NewBook {
   subtitle: string;
   genre: string;
   language: string;
+  /** Short description (max 300 characters): hero slider, cards, search. */
   description: string;
+  /** The story and what the book is about. */
+  longDescription: string;
+  /** About the author, for this book's page. */
+  aboutAuthor: string;
   releaseDate: string;
   isbn: string;
   publisher: string;
@@ -371,6 +395,8 @@ export async function saveBook(input: NewBook): Promise<void> {
       author_id: authorId,
       cover_url: coverUrl,
       description: input.description.trim() || null,
+      long_description: input.longDescription.trim() || null,
+      about_author: input.aboutAuthor.trim() || null,
       language: input.language || null,
       isbn: input.isbn.replace(/[-\s]/g, "") || null,
       publisher: input.publisher.trim() || null,
@@ -434,6 +460,7 @@ interface MyAuthorRow {
   website: string | null;
   socials: Record<string, string> | null;
   avatar_url: string | null;
+  photo_url?: string | null;
   verified: boolean;
   followers_count: number;
   prefs: Partial<Prefs> | null;
@@ -445,6 +472,8 @@ export interface MyProfile {
   profile: Profile;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  /** Optional author photo shown under "About the Author". */
+  photoUrl: string | null;
   prefs: Prefs;
   /** A brand-new account that hasn't seen the welcome prompt yet. */
   isNew: boolean;
@@ -471,6 +500,7 @@ export async function loadMyProfile(): Promise<MyProfile | null> {
     authorId: a.id,
     avatarUrl: a.avatar_url,
     bannerUrl: a.banner_url,
+    photoUrl: a.photo_url ?? null,
     prefs: { ...DEFAULT_PREFS, ...(a.prefs ?? {}) },
     // Only accounts created in the last 15 minutes are prompted, so existing users are never interrupted.
     isNew: !a.prefs?.onboarded && Date.now() - new Date(a.created_at).getTime() < 15 * 60 * 1000,
@@ -532,6 +562,24 @@ export async function saveAvatar(file: File): Promise<string> {
   if (upErr) throw new SaveError(explain(`Photo upload failed: ${upErr.message}`));
   const url = sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
   const { error } = await sb.from("authors").update({ avatar_url: url }).eq("user_id", user.id);
+  if (error) throw new SaveError(explain(error.message, error.code));
+  return url;
+}
+
+/** Uploads the author photo (or removes it when `file` is null). Returns the public URL, or null when removed. */
+export async function savePhoto(file: File | null): Promise<string | null> {
+  const sb = requireClient();
+  const user = clerkUser();
+  if (!user) throw new SaveError("Please sign in first.");
+  let url: string | null = null;
+  if (file) {
+    const photo = await preparePhoto(file);
+    const path = `${user.id}/photo-${Date.now()}.${EXT[photo.type] ?? "jpg"}`;
+    const { error: upErr } = await sb.storage.from("avatars").upload(path, photo, { contentType: photo.type, upsert: false, cacheControl: "31536000" });
+    if (upErr) throw new SaveError(explain(`Photo upload failed: ${upErr.message}`));
+    url = sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  }
+  const { error } = await sb.from("authors").update({ photo_url: url }).eq("user_id", user.id);
   if (error) throw new SaveError(explain(error.message, error.code));
   return url;
 }
@@ -1037,6 +1085,8 @@ export interface EditableBook {
   genre: string;
   language: string;
   description: string;
+  longDescription: string;
+  aboutAuthor: string;
   releaseDate: string;
   isbn: string;
   publisher: string;
@@ -1068,6 +1118,8 @@ export async function loadBookForEdit(id: number): Promise<EditableBook | null> 
     genre: genres[0]?.genres?.name ?? "",
     language: r.language ?? "English",
     description: r.description ?? "",
+    longDescription: r.long_description ?? "",
+    aboutAuthor: r.about_author ?? "",
     releaseDate: r.release_date ?? "",
     isbn: r.isbn ?? "",
     publisher: r.publisher ?? "",
@@ -1113,6 +1165,8 @@ export async function updateBook(id: number, input: NewBook, keepCoverUrl: strin
       subtitle: input.subtitle.trim() || null,
       cover_url: coverUrl,
       description: input.description.trim() || null,
+      long_description: input.longDescription.trim() || null,
+      about_author: input.aboutAuthor.trim() || null,
       language: input.language || null,
       isbn: input.isbn.replace(/[-\s]/g, "") || null,
       publisher: input.publisher.trim() || null,

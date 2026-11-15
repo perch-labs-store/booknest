@@ -9,6 +9,8 @@ export interface Author {
   featuredBookId?: number;
   /** Cover banner image. */
   bannerUrl?: string;
+  /** Optional author photo (selfie / portrait) shown under "About the Author". */
+  photoUrl?: string;
   followers: number;
   books: number;
   rating: number;

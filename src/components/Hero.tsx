@@ -29,25 +29,27 @@ function SlideView({ s, anim, hidden, first }: { s: SlideData; anim: string; hid
   return (
     <div className={`hero-slide relative [grid-area:1/1] overflow-hidden ${hidden ? "pointer-events-none" : ""} ${anim}`} aria-hidden={hidden || undefined}>
       {/* Background art */}
-      <img src={s.cover} alt="" decoding="async" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="absolute inset-0 h-full w-full scale-110 object-cover object-[50%_75%] opacity-60 blur-[2px]" />
-      <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/80 to-transparent" />
+      <img src={s.cover} alt="" decoding="async" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="absolute inset-0 h-full w-full scale-110 object-cover object-[50%_75%] opacity-50 blur-[3px] sm:opacity-60 sm:blur-[2px]" />
+      {/* Darker on phones, where text and cover share a narrow row. */}
+      <div className="absolute inset-0 bg-gradient-to-r from-bg to-transparent" />
+      <div className="absolute inset-0 bg-bg opacity-30 sm:opacity-0" />
 
-      <div className="relative flex min-h-[19rem] items-center justify-between gap-6 p-6 pb-10 sm:p-8 sm:pb-10 lg:min-h-[22rem]">
-        <div className="hero-rise max-w-md">
-          {s.genre && <GenreTag name={s.genre} className="inline-block rounded-full border border-brand/60 bg-brand/20 px-3 py-1 text-xs font-medium text-ink" />}
-          <h1 className="mt-4 line-clamp-2 font-serif text-3xl font-bold leading-tight text-ink sm:text-4xl">{s.title}</h1>
-          <p className="mt-3 line-clamp-3 text-sm text-muted sm:text-base">{s.blurb}</p>
-          <div className="mt-6 flex flex-wrap gap-3">
+      <div className="relative flex min-h-[15.5rem] items-center justify-between gap-4 px-5 pb-12 pt-6 sm:min-h-[19rem] sm:gap-6 sm:p-8 sm:pb-10 lg:min-h-[22rem]">
+        <div className="hero-rise min-w-0 max-w-md flex-1 md:flex-none">
+          {s.genre && <GenreTag name={s.genre} className="inline-block rounded-full border border-brand/60 bg-brand/20 px-2.5 py-0.5 text-[11px] font-medium text-ink sm:px-3 sm:py-1 sm:text-xs" />}
+          <h1 className="mt-3 line-clamp-3 font-serif text-[1.6rem] font-bold leading-[1.15] text-ink sm:mt-4 sm:line-clamp-2 sm:text-4xl sm:leading-tight">{s.title}</h1>
+          <p className="mt-2 line-clamp-2 text-[13px] leading-snug text-muted sm:mt-3 sm:line-clamp-3 sm:text-base sm:leading-normal">{s.blurb}</p>
+          <div className="mt-4 flex flex-wrap gap-3 sm:mt-6">
             <Link
               to={`/books/${s.slug}`}
-              className="flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-[#14181F] transition hover:brightness-110"
+              className="flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[13px] font-semibold text-[#14181F] transition hover:brightness-110 sm:px-5 sm:py-2.5 sm:text-sm"
             >
               View Details <ArrowRight size={16} />
             </Link>
           </div>
         </div>
 
-        {/* Cover art */}
+        {/* Cover art: smaller on phones, but always shown */}
         <img
           src={s.cover}
           alt={`${s.title} cover`}
@@ -56,7 +58,7 @@ function SlideView({ s, anim, hidden, first }: { s: SlideData; anim: string; hid
           decoding="async"
           {...(first ? { fetchPriority: "high" as const } : {})}
           onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
-          className="hero-cover hidden h-56 w-auto rounded-lg border border-white/10 object-cover shadow-2xl shadow-black/50 md:block lg:h-64"
+          className="hero-cover aspect-[3/4] h-[8.75rem] w-auto shrink-0 rounded-lg border border-white/10 object-cover shadow-xl shadow-black/50 min-[400px]:h-40 sm:h-48 md:h-56 md:shadow-2xl lg:h-64"
         />
       </div>
     </div>
@@ -166,7 +168,7 @@ export default function Hero() {
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border border-line bg-surface"
+      className="relative touch-pan-y overflow-hidden rounded-2xl border border-line bg-surface"
       aria-roledescription="carousel"
       aria-label="Featured books"
       onPointerEnter={(e) => e.pointerType === "mouse" && setP("hover", true)}
@@ -198,27 +200,22 @@ export default function Hero() {
       <button
         onClick={() => go(cur + 1)}
         aria-label="Next slide"
-        className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 sm:block md:right-3 lg:hidden"
-      >
-        <ChevronRight size={18} />
-      </button>
-      <button
-        onClick={() => go(cur + 1)}
-        aria-label="Next slide"
-        className="absolute right-4 top-4 hidden rounded-full bg-black/50 p-2 text-white hover:bg-black/70 lg:block"
+        className="absolute right-3 top-3 hidden rounded-full bg-black/50 p-2 text-white hover:bg-black/70 sm:block lg:right-4 lg:top-4"
       >
         <ChevronRight size={18} />
       </button>
 
-      <div className="absolute bottom-4 left-6 flex gap-1.5 sm:left-8">
+      <div className="absolute bottom-2 left-3 flex items-center sm:bottom-3 sm:left-6">
         {slides.map((sl, idx) => (
           <button
             key={sl.slug}
             onClick={() => go(idx, idx > cur ? 1 : -1)}
             aria-label={`Go to slide ${idx + 1}: ${sl.title}`}
             aria-current={idx === cur}
-            className={`h-1.5 rounded-full transition-all ${idx === cur ? "w-4 bg-brand" : "w-1.5 bg-muted/60"}`}
-          />
+            className="group flex h-6 items-center px-[3px]"
+          >
+            <span className={`block h-1.5 rounded-full transition-all ${idx === cur ? "w-5 bg-brand" : "w-1.5 bg-ink opacity-30 group-hover:opacity-60"}`} />
+          </button>
         ))}
       </div>
       </>}

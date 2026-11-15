@@ -13,6 +13,7 @@ import FeaturedBook from "../components/FeaturedBook";
 import AuthorPosts from "../components/AuthorPosts";
 import ShareProfile from "../components/ShareProfile";
 import { catalog } from "../data/catalog";
+import AuthorPhoto from "../components/AuthorPhoto";
 import GenreTag from "../components/GenreTag";
 import type { SocialLinks as Socials } from "../data/socials";
 import type { Author } from "../data/authors";
@@ -261,10 +262,13 @@ export default function AuthorDetail() {
 
           {tab === "About" && (
             <section className="space-y-4">
-              <div className="rounded-2xl border border-line bg-surface p-5">
-                <h2 className="font-serif text-xl font-bold text-ink">About {author.name}</h2>
-                {author.bio && author.about && <p className="mt-2 text-sm font-medium text-ink">{author.bio}</p>}
-                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink/90">{author.about || author.bio || `${author.name} writes ${author.genres.split(" · ").join(", ")}.`}</p>
+              <div className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 sm:flex-row">
+                <AuthorPhoto url={author.photoUrl} seed={author.id} alt={`${author.name}, author`} className="aspect-square w-40 rounded-2xl sm:w-44" />
+                <div className="min-w-0">
+                  <h2 className="font-serif text-xl font-bold text-ink">About {author.name}</h2>
+                  {author.bio && author.about && <p className="mt-2 text-sm font-medium text-ink">{author.bio}</p>}
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink/90">{author.about || author.bio || `${author.name} writes ${author.genres.split(" · ").join(", ")}.`}</p>
+                </div>
               </div>
               {socials && Object.keys(socials).length > 0 && (
                 <div className="rounded-2xl border border-line bg-surface p-5">

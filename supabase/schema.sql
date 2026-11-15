@@ -218,10 +218,33 @@ alter table public.authors    add column if not exists banner_url text;
 alter table public.authors    add column if not exists languages  text;   -- display string, e.g. 'English · Swahili'
 alter table public.authors    add column if not exists featured_book_id bigint references public.books (id) on delete set null;
 alter table public.authors    add column if not exists about      text check (char_length(about) <= 1500);
+alter table public.authors    add column if not exists photo_url  text;   -- optional author photo (selfie / portrait) for "About the Author"; empty = coloured icon
 alter table public.books      add column if not exists subtitle  text check (char_length(subtitle) <= 200);
 alter table public.books      add column if not exists language  text;
 alter table public.books      add column if not exists isbn      text check (isbn ~ '^([0-9]{9}[0-9Xx]|[0-9]{13})$');
 alter table public.books      add column if not exists publisher text check (char_length(publisher) <= 120);
+
+-- Two descriptions per book:
+--   description       = the SHORT description (max 300 characters): hero slider, book cards, search results, top of the book page.
+--   long_description  = the full story / what the book is about, shown on the book page.
+--   about_author      = "About the author" text for this book (falls back to the author's profile text when empty).
+alter table public.books      add column if not exists long_description text check (char_length(long_description) <= 8000);
+alter table public.books      add column if not exists about_author     text check (char_length(about_author) <= 1500);
+
+-- One-time tidy-up for books saved before the split: a description longer than 300 characters moves to
+-- long_description and a short version (cut at a word, ending in "…") takes its place. Safe to run again: it only
+-- touches rows that are still too long.
+update public.books
+   set long_description = coalesce(long_description, description),
+       description      = regexp_replace(left(description, 297), '\s+\S*$', '') || '…'
+ where char_length(description) > 300;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'books_description_short' and conrelid = 'public.books'::regclass) then
+    alter table public.books add constraint books_description_short check (char_length(description) <= 300);
+  end if;
+end $$;
 
 
 -- 3. INDEXES -------------------------------------------------------------------
@@ -546,12 +569,14 @@ revoke insert, update on public.books         from anon, authenticated;
 revoke update         on public.reviews       from anon, authenticated;
 revoke insert, update on public.notifications from anon, authenticated;
 grant update (name, username, genres, bio, location, website, socials, avatar_url, prefs) on public.authors to authenticated;
-grant update (banner_url, about, featured_book_id, languages) on public.authors to authenticated;
+grant update (banner_url, about, featured_book_id, languages, photo_url) on public.authors to authenticated;
 grant insert (slug, title, author_id, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code) on public.books to authenticated;
 grant update (title, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code)                  on public.books to authenticated;
 grant update (slug) on public.books to authenticated;
 grant insert (subtitle, language, isbn, publisher) on public.books to authenticated;
 grant update (subtitle, language, isbn, publisher) on public.books to authenticated;
+grant insert (long_description, about_author) on public.books to authenticated;
+grant update (long_description, about_author) on public.books to authenticated;
 grant update (rating, body) on public.reviews to authenticated;
 revoke update on public.review_replies from anon, authenticated;
 grant update (body) on public.review_replies to authenticated;

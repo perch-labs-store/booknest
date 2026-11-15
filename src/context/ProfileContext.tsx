@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { initialProfile, type Profile } from "../data/profile";
-import { DEFAULT_PREFS, loadMyProfile, saveAvatar, saveBanner, saveMyPrefs, saveMyProfile, type Prefs } from "../data/remote";
+import { DEFAULT_PREFS, loadMyProfile, saveAvatar, saveBanner, savePhoto, saveMyPrefs, saveMyProfile, type Prefs } from "../data/remote";
 import { useAuth } from "./AuthContext";
 
 interface ProfileValue {
@@ -9,12 +9,16 @@ interface ProfileValue {
   authorId: string | null;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  /** Optional author photo shown under "About the Author". */
+  photoUrl: string | null;
   prefs: Prefs;
   /** Saves profile edits to Supabase. Resolves to an error message, or null when it worked. */
   update: (patch: Partial<Profile>) => Promise<string | null>;
   updatePrefs: (patch: Partial<Prefs>) => void;
   /** Uploads a new profile photo. Resolves to an error message, or null when it worked. */
   updateAvatar: (file: File) => Promise<string | null>;
+  /** Uploads a new author photo, or removes it with null. Resolves to an error message, or null when it worked. */
+  updatePhoto: (file: File | null) => Promise<string | null>;
   /** Uploads a new cover banner, or removes it with null. Resolves to an error message, or null when it worked. */
   updateBanner: (file: File | null) => Promise<string | null>;
   /** True right after sign-up, until the welcome prompt is saved or skipped. */
@@ -33,6 +37,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [authorId, setAuthorId] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [needsWelcome, setNeedsWelcome] = useState(false);
 
@@ -42,6 +47,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setProfile(initialProfile);
       setAvatarUrl(null);
       setBannerUrl(null);
+      setPhotoUrl(null);
       setAuthorId(null);
       setPrefs(DEFAULT_PREFS);
       setNeedsWelcome(false);
@@ -53,6 +59,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setProfile(mine.profile);
       setAvatarUrl(mine.avatarUrl);
       setBannerUrl(mine.bannerUrl);
+      setPhotoUrl(mine.photoUrl);
       setAuthorId(mine.authorId);
       setPrefs(mine.prefs);
       setNeedsWelcome(mine.isNew);
@@ -90,6 +97,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updatePhoto = useCallback(async (file: File | null) => {
+    try {
+      setPhotoUrl(await savePhoto(file));
+      return null;
+    } catch (e) {
+      return messageOf(e);
+    }
+  }, []);
+
   const updateBanner = useCallback(async (file: File | null) => {
     try {
       setBannerUrl(await saveBanner(file));
@@ -105,8 +121,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [updatePrefs]);
 
   const value = useMemo(
-    () => ({ profile, authorId, avatarUrl, bannerUrl, prefs, update, updatePrefs, updateAvatar, updateBanner, needsWelcome, finishWelcome }),
-    [profile, authorId, avatarUrl, bannerUrl, prefs, update, updatePrefs, updateAvatar, updateBanner, needsWelcome, finishWelcome],
+    () => ({ profile, authorId, avatarUrl, bannerUrl, photoUrl, prefs, update, updatePrefs, updateAvatar, updatePhoto, updateBanner, needsWelcome, finishWelcome }),
+    [profile, authorId, avatarUrl, bannerUrl, photoUrl, prefs, update, updatePrefs, updateAvatar, updatePhoto, updateBanner, needsWelcome, finishWelcome],
   );
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
