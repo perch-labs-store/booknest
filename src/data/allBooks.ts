@@ -2,7 +2,9 @@ import { catalog } from "./catalog";
 import { trendingBooks, recommendedBooks } from "./books";
 import { releases } from "./releases";
 import { initialMyBooks, initialProfile } from "./profile";
-import { getAuthorByName } from "./authorBooks";
+import { authorIdForName, getAuthorByName } from "./authorBooks";
+import { compact } from "../utils/format";
+import type { Book } from "./books";
 import type { BookLink } from "./links";
 import type { Discount } from "./discount";
 
@@ -111,4 +113,85 @@ export function getBooksByGenre(name: string): BookDetail[] {
   return getAllBooks()
     .filter((b) => !b.draft && genresOf(b).some((g) => g.toLowerCase() === target))
     .sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0) || (b.rating ?? 0) - (a.rating ?? 0));
+}
+
+/* ------------------------------------------------------------------ */
+/* Home page: Trending, Recommended and the Hero slider               */
+/* ------------------------------------------------------------------ */
+
+const released = (b: BookDetail) => !b.draft && (b.daysAgo ?? 0) >= 0 && Boolean(b.cover);
+const popularity = (b: BookDetail) => (b.likes ?? 0) + 2 * (b.saves ?? 0);
+/** Likes and saves, plus a small boost for books released in the last two weeks. */
+const trendScore = (b: BookDetail) => popularity(b) + Math.max(0, 14 - (b.daysAgo ?? 14)) * 5;
+const newestFirst = (a: BookDetail, b: BookDetail) => (a.daysAgo ?? 9999) - (b.daysAgo ?? 9999) || a.title.localeCompare(b.title);
+
+/** Shape a book for BookCard. */
+export const toCard = (b: BookDetail, i = 0): Book => ({
+  id: b.id ?? -(i + 1),
+  title: b.title,
+  author: b.author,
+  cover: b.cover,
+  likes: compact(b.likes ?? 0),
+  saves: compact(b.saves ?? 0),
+  discount: b.discount,
+});
+
+/** Released books, hottest first. With few likes yet, the newest books come first. */
+export function getTrendingBooks(limit = 10): BookDetail[] {
+  return getAllBooks()
+    .filter(released)
+    .sort((a, b) => trendScore(b) - trendScore(a) || newestFirst(a, b))
+    .slice(0, limit);
+}
+
+/** Books for the Hero slider: the trending order, but only books with a description to show. */
+export const getHeroBooks = (limit = 10): BookDetail[] => getTrendingBooks(1000).filter((b) => b.description).slice(0, limit);
+
+export interface Taste {
+  liked: Set<number>;
+  saved: Set<number>;
+  /** Author ids the person follows. */
+  following: Set<string>;
+}
+
+/**
+ * "Recommended for you". With some history (liked or saved books, followed authors) it ranks books by shared
+ * genres and followed authors. With none, it shows a mix of well-rated books from different genres, preferring
+ * ones that aren't in `avoid` (e.g. the Trending list).
+ */
+export function getRecommendedBooks(taste: Taste, limit = 10, avoid: Set<string> = new Set()): BookDetail[] {
+  const pool = getAllBooks().filter(released);
+  const mine = pool.filter((b) => b.id !== undefined && (taste.liked.has(b.id) || taste.saved.has(b.id)));
+  const weights = new Map<string, number>();
+  mine.forEach((b) => genresOf(b).forEach((g) => weights.set(g.toLowerCase(), (weights.get(g.toLowerCase()) ?? 0) + 1)));
+
+  if (weights.size || taste.following.size) {
+    const have = new Set(mine.map((b) => b.slug));
+    const match = (b: BookDetail) =>
+      genresOf(b).reduce((n, g) => n + (weights.get(g.toLowerCase()) ?? 0), 0) * 3 + (taste.following.has(authorIdForName(b.author) ?? "") ? 4 : 0);
+    return pool
+      .filter((b) => !have.has(b.slug))
+      .map((b) => ({ b, s: match(b) }))
+      .sort((x, y) => y.s - x.s || popularity(y.b) - popularity(x.b) || newestFirst(x.b, y.b))
+      .slice(0, limit)
+      .map((x) => x.b);
+  }
+
+  // No history: one book per genre in turn, best rated first.
+  const byQuality = (a: BookDetail, b: BookDetail) => (b.rating ?? 0) - (a.rating ?? 0) || popularity(b) - popularity(a) || newestFirst(a, b);
+  const fresh = pool.filter((b) => !avoid.has(b.slug)).sort(byQuality);
+  const rest = pool.filter((b) => avoid.has(b.slug)).sort(byQuality);
+  const buckets = new Map<string, BookDetail[]>();
+  fresh.forEach((b) => {
+    const key = (genresOf(b)[0] ?? "other").toLowerCase();
+    buckets.set(key, [...(buckets.get(key) ?? []), b]);
+  });
+  const out: BookDetail[] = [];
+  while (out.length < limit && [...buckets.values()].some((l) => l.length)) {
+    for (const list of buckets.values()) {
+      const next = list.shift();
+      if (next && out.length < limit) out.push(next);
+    }
+  }
+  return [...out, ...rest].slice(0, limit);
 }

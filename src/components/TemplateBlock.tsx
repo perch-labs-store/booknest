@@ -10,8 +10,8 @@ interface Props {
   theme: Theme;
   editable: boolean;
   onChange: (patch: Partial<Block>) => void;
-  /** Scrolls the page to the section a label points to (links work in Preview). */
-  onNavigate?: (label: string) => void;
+  /** Runs when a button or nav link is clicked (Preview and the published site). Gets the label and, for buttons, the author's link. */
+  onNavigate?: (label: string, link?: string) => void;
   social?: Record<string, string>;
   onEditSocial?: (networkId: string) => void;
 }
@@ -42,7 +42,7 @@ export default function TemplateBlock(props: Props) {
   const line = { borderColor: `${theme.ink}1f` };
   const soft = { backgroundColor: `${theme.accent}1f` };
   const panel = { backgroundColor: `${theme.ink}0d`, borderColor: `${theme.ink}1a` };
-  const go = (label: string | undefined) => (onNavigate && label ? () => onNavigate(label) : undefined);
+  const go = (label: string | undefined, link?: string) => (onNavigate && label ? () => onNavigate(label, link) : undefined);
 
   const setItem = (i: number, patch: Partial<Item>) =>
     onChange({ items: items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)) });
@@ -114,9 +114,10 @@ export default function TemplateBlock(props: Props) {
             value={block.button ?? ""}
             editable={editable}
             onChange={(button) => onChange({ button })}
-            onActivate={go(block.button)}
+            onActivate={go(block.button, block.link)}
             className="font-bold underline underline-offset-4"
           />
+          {editable && <LinkField value={block.link} onChange={(link) => onChange({ link })} />}
         </div>
       );
 
@@ -152,20 +153,24 @@ export default function TemplateBlock(props: Props) {
               value={block.button ?? ""}
               editable={editable}
               onChange={(button) => onChange({ button })}
-              onActivate={go(block.button)}
+              onActivate={go(block.button, block.link)}
               className={`inline-block px-7 py-3 text-sm font-semibold ${r}`}
               style={btnStyle}
             />
+            {editable && <LinkField value={block.link} onChange={(link) => onChange({ link })} />}
             {(block.button2 || editable) && (
-              <EditableText
-                value={block.button2 ?? ""}
-                editable={editable}
-                onChange={(button2) => onChange({ button2 })}
-                onActivate={go(block.button2)}
-                placeholder="Second button"
-                className={`inline-block border px-7 py-3 text-sm font-semibold ${r}`}
-                style={{ borderColor: `${theme.ink}40` }}
-              />
+              <>
+                <EditableText
+                  value={block.button2 ?? ""}
+                  editable={editable}
+                  onChange={(button2) => onChange({ button2 })}
+                  onActivate={go(block.button2, block.link2)}
+                  placeholder="Second button"
+                  className={`inline-block border px-7 py-3 text-sm font-semibold ${r}`}
+                  style={{ borderColor: `${theme.ink}40` }}
+                />
+                {editable && <LinkField value={block.link2} onChange={(link2) => onChange({ link2 })} />}
+              </>
             )}
           </div>
         </div>
@@ -194,7 +199,7 @@ export default function TemplateBlock(props: Props) {
         >
           {banner && (
             <>
-              <img src={imageSrc(first)} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-2xl" />
+              <img src={imageSrc(first)} alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-2xl" />
               <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${theme.bg}99 0%, ${theme.bg} 100%)` }} />
             </>
           )}
@@ -370,15 +375,18 @@ export default function TemplateBlock(props: Props) {
               {text(block.text, (t) => onChange({ text: t }), "leading-relaxed opacity-75")}
               <div className="mt-6 flex flex-wrap items-center justify-center gap-4 @3xl:justify-start">
                 {(block.button || editable) && (
-                  <EditableText
-                    value={block.button ?? ""}
-                    editable={editable}
-                    onChange={(button) => onChange({ button })}
-                    onActivate={go(block.button)}
-                    placeholder="Button"
-                    className={`inline-block border px-6 py-2.5 text-sm font-semibold ${r}`}
-                    style={{ borderColor: theme.accent, color: theme.accent }}
-                  />
+                  <>
+                    <EditableText
+                      value={block.button ?? ""}
+                      editable={editable}
+                      onChange={(button) => onChange({ button })}
+                      onActivate={go(block.button, block.link)}
+                      placeholder="Button"
+                      className={`inline-block border px-6 py-2.5 text-sm font-semibold ${r}`}
+                      style={{ borderColor: theme.accent, color: theme.accent }}
+                    />
+                    {editable && <LinkField value={block.link} onChange={(link) => onChange({ link })} />}
+                  </>
                 )}
                 <SocialIcons social={social} editable={editable} onEdit={onEditSocial} size={16} style={{ borderColor: `${theme.ink}30` }} />
               </div>
@@ -553,15 +561,33 @@ export default function TemplateBlock(props: Props) {
 /* Sections that hold their own state                                  */
 /* ------------------------------------------------------------------ */
 
+/** Edit mode only: the address a button opens on the published site. */
+function LinkField({ value, onChange }: { value: string | undefined; onChange: (value: string) => void }) {
+  return (
+    <label className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] opacity-70 focus-within:opacity-100" style={{ borderColor: "currentColor" }}>
+      <span className="font-semibold">Link</span>
+      <input
+        type="text"
+        inputMode="url"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://… or mailto:…"
+        aria-label="Button link"
+        className="w-36 min-w-0 bg-transparent font-normal text-inherit outline-none placeholder:opacity-50"
+      />
+    </label>
+  );
+}
+
 function Header({ block, theme, editable, onChange, onNavigate }: Props) {
   const [open, setOpen] = useState(false);
   const items = block.items ?? [];
   const r = theme.shape === "square" ? "rounded-md" : "rounded-full";
-  const go = (label: string | undefined) =>
+  const go = (label: string | undefined, link?: string) =>
     onNavigate && label
       ? () => {
           setOpen(false);
-          onNavigate(label);
+          onNavigate(label, link);
         }
       : undefined;
 
@@ -597,10 +623,11 @@ function Header({ block, theme, editable, onChange, onNavigate }: Props) {
             value={block.button ?? ""}
             editable={editable}
             onChange={(button) => onChange({ button })}
-            onActivate={go(block.button)}
+            onActivate={go(block.button, block.link)}
             className={`border px-4 py-2 text-xs font-semibold ${r}`}
             style={{ borderColor: theme.accent, color: theme.accent }}
           />
+          {editable && <LinkField value={block.link} onChange={(link) => onChange({ link })} />}
           {!editable && (
             <button
               type="button"

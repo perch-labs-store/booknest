@@ -8,7 +8,7 @@ import { useAuthModal } from "../context/AuthModalContext";
 import { loadBookForEdit, loadRemote, saveBook, updateBook } from "../data/remote";
 import { FORMAT_LABELS, LINK_FORMATS, STORE_LABELS, normalizeUrl, type LinkFormat, type LinkStore } from "../data/links";
 
-const GENRES = [...GENRE_FILTERS, "Business", "Horror", "Historical"] as const;
+const GENRES = GENRE_FILTERS;
 const LANGUAGES = ["English", "Swahili", "French", "Spanish", "German", "Arabic"] as const;
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/png", "image/jpeg", "image/webp"];

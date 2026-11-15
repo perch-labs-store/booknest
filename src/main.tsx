@@ -1,31 +1,27 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import App from "./App";
-import { ThemeProvider } from "./context/ThemeContext";
-import { FollowProvider } from "./context/FollowContext";
-import { LibraryProvider } from "./context/LibraryContext";
-import { ProfileProvider } from "./context/ProfileContext";
-import { AuthModalProvider } from "./context/AuthModalContext";
-import { AuthProvider } from "./context/AuthContext";
+import { getSiteSubdomain } from "./lib/host";
 import "./index.css";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <AuthModalProvider>
-            <ProfileProvider>
-              <FollowProvider>
-                <LibraryProvider>
-                  <App />
-                </LibraryProvider>
-              </FollowProvider>
-            </ProfileProvider>
-          </AuthModalProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
-  </React.StrictMode>
-);
+const root = ReactDOM.createRoot(document.getElementById("root")!);
+const subdomain = getSiteSubdomain();
+
+if (subdomain) {
+  // An author's published site (<name>.<root domain>): only the page itself. The normal app, Clerk, the
+  // layout, the push / install / welcome prompts are never loaded, so none of them can start.
+  import("./pages/PublishedSite").then(({ default: PublishedSite }) =>
+    root.render(
+      <React.StrictMode>
+        <PublishedSite subdomain={subdomain} />
+      </React.StrictMode>
+    )
+  );
+} else {
+  import("./MainApp").then(({ default: MainApp }) =>
+    root.render(
+      <React.StrictMode>
+        <MainApp />
+      </React.StrictMode>
+    )
+  );
+}

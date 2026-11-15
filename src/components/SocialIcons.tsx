@@ -1,5 +1,6 @@
 import { BookOpen, Facebook, Globe, Instagram, Linkedin, Youtube } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+import { sanitizeLink } from "../lib/safeLink";
 
 const XIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -63,9 +64,14 @@ export default function SocialIcons({ social, editable, onEdit, className = "", 
             {n.icon(size)}
           </button>
         ) : (
-          <a key={n.id} href={social![n.id]} target="_blank" rel="noopener noreferrer" aria-label={n.label} title={n.label} className={base} style={style}>
-            {n.icon(size)}
-          </a>
+          (() => {
+            const href = sanitizeLink(social![n.id]);
+            return href ? (
+              <a key={n.id} href={href} target="_blank" rel="noopener noreferrer" aria-label={n.label} title={n.label} className={base} style={style}>
+                {n.icon(size)}
+              </a>
+            ) : null;
+          })()
         ),
       )}
       {editable && shown.length === 0 && <span className="text-xs opacity-60">Add social links in the Social panel</span>}

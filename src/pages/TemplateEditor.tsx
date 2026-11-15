@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp, Eye, Monitor, Pencil, RotateCcw, SlidersHorizontal, Smartphone, Tablet, Trash2, X } from "lucide-react";
 import TemplateBlock from "../components/TemplateBlock";
 import ConfirmModal from "../components/ConfirmModal";
+import PublishControl from "../components/PublishControl";
 import { useAuth } from "../context/AuthContext";
 import { deleteSiteDoc, loadSiteDoc, saveSiteDoc } from "../data/remote";
 import { NETWORKS } from "../components/SocialIcons";
@@ -246,6 +247,7 @@ export default function TemplateEditor() {
           value={editing ? "edit" : "preview"}
           onChange={(v) => setEditing(v === "edit")}
         />
+        <PublishControl templateId={template.id} templateName={template.name} doc={doc} ready={!signedIn || remoteReady} />
         <button
           type="button"
           onClick={() => setPanelOpen((o) => !o)}

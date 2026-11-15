@@ -91,7 +91,7 @@ export async function loadRemote(): Promise<void> {
     supabase
       .from("books")
       .select(
-        "id, title, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code, likes_count, saves_count, rating_avg, rating_count, created_by, created_at, author:authors(id, name), book_genres(position, genres(name)), book_links(type, format, url)",
+        "id, title, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code, likes_count, saves_count, rating_avg, rating_count, created_by, created_at, author:authors!author_id(id, name), book_genres(position, genres(name)), book_links(type, format, url)",
       )
       .order("created_at", { ascending: false }),
     supabase.from("authors").select("id, name, genres, bio, about, banner_url, featured_book_id, languages, followers_count, books_count, rating_avg, rating_count, verified, growth_pct, created_at"),
@@ -430,6 +430,20 @@ export async function saveAvatar(file: File): Promise<string> {
   const { error } = await sb.from("authors").update({ avatar_url: url }).eq("user_id", user.id);
   if (error) throw new SaveError(explain(error.message, error.code));
   return url;
+}
+
+/** Id of the signed-in user, if any. */
+export const currentUserId = () => clerkUser()?.id ?? null;
+
+/** Uploads a picture for a template website (stored with the covers, in the user's own folder). Returns its public URL. */
+export async function saveSiteImage(file: File): Promise<string> {
+  const sb = requireClient();
+  const user = clerkUser();
+  if (!user) throw new SaveError("Please sign in first.");
+  const path = `${user.id}/site-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${EXT[file.type] ?? "jpg"}`;
+  const { error } = await sb.storage.from("covers").upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw new SaveError(explain(`Photo upload failed: ${error.message}`));
+  return sb.storage.from("covers").getPublicUrl(path).data.publicUrl;
 }
 
 /** Uploads a cover banner (or removes it when `file` is null). Returns the public URL, or null when removed. */

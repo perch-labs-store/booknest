@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { BadgeCheck, BookOpen, Bell, Check, Copy, Mail, Search, ShieldAlert, Smartphone, Sparkles, Users, UserCog, Lock, Handshake, Copyright as CopyrightIcon, LayoutTemplate, type LucideIcon } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, BookOpen, Bell, Check, Copy, Mail, Search, ShieldAlert, Smartphone, Sparkles, Users, UserCog, Lock, Handshake, Copyright as CopyrightIcon, LayoutTemplate, type LucideIcon } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import { COMPANY } from "../data/company";
 
@@ -10,9 +10,25 @@ const { product: APP, name: ORG, email: EMAIL, governingLaw, lastUpdated } = COM
 /* Shared building blocks                                              */
 /* ------------------------------------------------------------------ */
 
+/** Back to the page the reader came from (e.g. Settings), or to Settings when this page was opened directly. */
+function BackButton() {
+  const navigate = useNavigate();
+  const { key } = useLocation();
+  return (
+    <button
+      type="button"
+      onClick={() => (key === "default" ? navigate("/settings") : navigate(-1))}
+      className="mb-4 inline-flex items-center gap-1.5 rounded-full py-1.5 pr-3 text-sm font-medium text-muted hover:text-ink"
+    >
+      <ArrowLeft size={16} /> Back
+    </button>
+  );
+}
+
 function Doc({ title, subtitle, updated, wide, children }: { title: string; subtitle?: string; updated?: boolean; wide?: boolean; children: ReactNode }) {
   return (
     <>
+      <BackButton />
       <PageHeader title={title} subtitle={subtitle} />
       {updated && <p className="-mt-3 mb-6 text-xs text-muted">Last updated: {lastUpdated}</p>}
       <article className={`${wide ? "max-w-4xl" : "max-w-2xl"} space-y-7 text-sm leading-relaxed text-ink/90`}>{children}</article>
@@ -55,7 +71,8 @@ const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: Users, title: "Author pages & following", text: "Authors get a public profile. Readers follow the ones they love and see what's new." },
   { icon: Search, title: "Easy discovery", text: "Browse genres, new releases and top authors, or search by title, author or topic." },
   { icon: Sparkles, title: "Discounts, clearly shown", text: "Authors can run a time-limited discount with a code, and readers spot it with a badge." },
-  { icon: BadgeCheck, title: "Verified authors", text: "Authors can ask for the blue tick so readers know they're on the real page." },
+  // TODO(payments): bring this back together with "Become verified".
+  // { icon: BadgeCheck, title: "Verified authors", text: "Authors can ask for the blue tick so readers know they're on the real page." },
   { icon: LayoutTemplate, title: "Author website templates", text: "Pick a template and build a simple author website without writing any code." },
   { icon: Bell, title: "Live notifications", text: "Optional notifications for likes, new followers and updates from the authors you follow." },
   { icon: Smartphone, title: "Install it like an app", text: "BookNest works in your browser and can be added to your home screen, no app store needed." },

@@ -41,6 +41,10 @@ export interface Block {
   text?: string;
   button?: string;
   button2?: string;
+  /** Where the button goes on the published site (http, https, mailto or tel). Empty = scroll to the section its label names. */
+  link?: string;
+  /** Same, for the second button. */
+  link2?: string;
   /** Image ids (hero uses up to three, about/quote use the first). */
   images?: string[];
   items?: Item[];
@@ -165,8 +169,14 @@ const title = (id: string) => id.split("-").map((w) => w[0].toUpperCase() + w.sl
 
 export type ImageKind = "cover" | "author";
 
-export const imageSrc = (id: string | undefined) => (id ? COVER_SRC[id] ?? PORTRAIT_SRC[id] ?? "" : "");
-export const imageKind = (id: string | undefined): ImageKind => (id && PORTRAIT_SRC[id] ? "author" : "cover");
+/** A picture the author uploaded: stored as its address plus "#cover" or "#author" (the shape it was added as). */
+export const isUploadedImage = (id: string | undefined): id is string => Boolean(id && /^https?:\/\//i.test(id));
+export const uploadedImageValue = (url: string, kind: ImageKind) => `${url.split("#")[0]}#${kind}`;
+export const uploadedImageUrl = (id: string) => id.split("#")[0];
+
+export const imageSrc = (id: string | undefined) => (isUploadedImage(id) ? id : id ? COVER_SRC[id] ?? PORTRAIT_SRC[id] ?? "" : "");
+export const imageKind = (id: string | undefined): ImageKind =>
+  isUploadedImage(id) ? (id.endsWith("#author") ? "author" : "cover") : id && PORTRAIT_SRC[id] ? "author" : "cover";
 export const imageLabel = (id: string) => COVERS.find((c) => c.id === id)?.title ?? title(id);
 export const IMAGE_LIBRARY: Record<ImageKind, { id: string; label: string }[]> = {
   cover: COVERS.map((c) => ({ id: c.id, label: c.title })),

@@ -1,8 +1,16 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig({
+/** Escapes text so it can sit inside a RegExp. */
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export default defineConfig(({ mode }) => {
+  // The Supabase address, so the published-site cache rule below only matches this project's requests.
+  const supabaseUrl = loadEnv(mode, ".", "VITE_").VITE_SUPABASE_URL?.trim().replace(/\/+$/, "");
+  const supabaseOrigin = supabaseUrl ? escapeRegExp(supabaseUrl) : "https://[a-z0-9-]+\\.supabase\\.(?:co|in)";
+
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -40,9 +48,24 @@ export default defineConfig({
         // Precache the app shell + book covers so the app opens offline.
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2}"],
         // Client-side routing: unknown navigations get index.html.
+        // This also covers every author subdomain, because the service worker is per address.
         navigateFallback: "/index.html",
+        // API-style paths are never answered with the app shell.
+        navigateFallbackDenylist: [/^\/(api|rest|auth|storage|functions|realtime)(\/|$)/],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            // A published author site (public lookup by address): fresh when the network answers,
+            // otherwise a copy at most ~5 minutes old, so "Update site" shows up soon.
+            urlPattern: new RegExp(`^${supabaseOrigin}/rest/v1/published_sites\\?(?:.*&)?subdomain=eq\\.`, "i"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "published-sites",
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 20, maxAgeSeconds: 5 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "StaleWhileRevalidate",
@@ -61,4 +84,5 @@ export default defineConfig({
       },
     }),
   ],
+};
 });

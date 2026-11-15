@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, BarChart3, BookOpen, Check, ChevronRight, Copy, Copyright as CopyrightIcon, Info, LogIn, LogOut, Mail, MessageSquarePlus, Moon, ScrollText, Settings as Gear, ShieldCheck, ShieldHalf, Sun, ExternalLink, type LucideIcon } from "lucide-react";
-import VerificationCard from "../components/VerificationCard";
+// TODO(payments): re-enable "Become verified" when payments are added.
+// import VerificationCard from "../components/VerificationCard";
 import { Toggle, PushToggle } from "../components/SettingsToggles";
 import { useProfile } from "../context/ProfileContext";
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "../context/AuthModalContext";
 import { useTheme } from "../context/ThemeContext";
-import { initialMyBooks } from "../data/profile";
+// import { initialMyBooks } from "../data/profile"; // TODO(payments): needed again with "Become verified"
 import { COMPANY } from "../data/company";
 
 const Heading = ({ children }: { children: ReactNode }) => (
@@ -33,11 +34,12 @@ export default function Settings() {
   const navigate = useNavigate();
   const { signedIn, loading, signOut } = useAuth();
   const auth = useAuthModal();
-  const { profile, authorId, prefs, updatePrefs } = useProfile();
+  // TODO(payments): add back `profile` and `authorId` with "Become verified".
+  const { prefs, updatePrefs } = useProfile();
   const { theme, toggleTheme } = useTheme();
   const [copied, setCopied] = useState(false);
   const isDark = theme === "dark";
-  const published = initialMyBooks.filter((b) => b.status === "Published").length;
+  // const published = initialMyBooks.filter((b) => b.status === "Published").length; // TODO(payments)
 
   const copyEmail = async () => {
     try {
@@ -65,14 +67,18 @@ export default function Settings() {
           <Heading>Account</Heading>
           <Row icon={Gear} label="Edit Profile" onClick={() => navigate("/profile", { state: { edit: true } })} />
           <Row icon={BarChart3} label="Analytics" onClick={() => navigate("/profile", { state: { tab: "Stats" } })} />
+          {/* TODO(payments): "Become verified" is switched off for now. Re-enable it when payments are added.
           <div className="mt-2">
             <VerificationCard verified={profile.verified} authorId={authorId} publishedCount={published} />
           </div>
+          */}
 
           <Heading>Notifications &amp; privacy</Heading>
           <div className="divide-y divide-line rounded-2xl border border-line bg-surface px-5">
             <PushToggle />
+            {/* TODO(email): hidden until emails are actually sent. Re-enable with the email feature.
             <Toggle label="Email updates" desc="Get new release and activity summaries by email." on={prefs.emailUpdates} onChange={(v) => updatePrefs({ emailUpdates: v })} />
+            */}
             <Toggle label="New follower alerts" desc="Notify me when someone follows me." on={prefs.followerAlerts} onChange={(v) => updatePrefs({ followerAlerts: v })} />
             <Toggle label="Show follower count" desc="Display your follower count on your profile." on={prefs.showFollowers} onChange={(v) => updatePrefs({ showFollowers: v })} />
           </div>

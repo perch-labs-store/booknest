@@ -1,5 +1,6 @@
 import type { BookLink } from "./links";
 import type { Discount } from "./discount";
+import { genres } from "./genres";
 
 export type Format = "eBook" | "Paperback";
 
@@ -24,7 +25,8 @@ export interface CatalogBook {
 
 export const catalog: CatalogBook[] = [];
 
-export const GENRE_FILTERS = ["Fantasy", "Adventure", "Young Adult", "Romance", "Thriller", "Mystery", "Sci-Fi", "Non-Fiction", "Self-Help"] as const;
+/** Every genre name, from data/genres.ts (the one list to edit). */
+export const GENRE_FILTERS: string[] = genres.map((g) => g.name);
 export const FORMAT_FILTERS: Format[] = ["eBook", "Paperback"];
 export const RATING_FILTERS = [
   { label: "Any rating", min: 0 },

@@ -8,6 +8,8 @@ import type { AppNotification } from "./notifications";
 import { bookSlug, genreSlug, resetBookCache } from "./allBooks";
 import { normalizeUrl, type BookLink, type LinkFormat, type LinkStore } from "./links";
 import type { Discount } from "./discount";
+import type { SiteDoc } from "./templates";
+import { SUBDOMAIN_RE } from "../lib/host";
 
 /* ------------------------------------------------------------------ */
 /* Change notifications: pages re-render when the database data loads  */
@@ -432,6 +434,20 @@ export async function saveAvatar(file: File): Promise<string> {
   return url;
 }
 
+/** Id of the signed-in user, if any. */
+export const currentUserId = () => clerkUser()?.id ?? null;
+
+/** Uploads a picture for a template website (stored with the covers, in the user's own folder). Returns its public URL. */
+export async function saveSiteImage(file: File): Promise<string> {
+  const sb = requireClient();
+  const user = clerkUser();
+  if (!user) throw new SaveError("Please sign in first.");
+  const path = `${user.id}/site-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${EXT[file.type] ?? "jpg"}`;
+  const { error } = await sb.storage.from("covers").upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw new SaveError(explain(`Photo upload failed: ${error.message}`));
+  return sb.storage.from("covers").getPublicUrl(path).data.publicUrl;
+}
+
 /** Uploads a cover banner (or removes it when `file` is null). Returns the public URL, or null when removed. */
 export async function saveBanner(file: File | null): Promise<string | null> {
   const sb = requireClient();
@@ -572,6 +588,102 @@ export async function deleteSiteDoc(templateId: string): Promise<void> {
   const user = clerkUser();
   if (!supabase || !user) return;
   await supabase.from("site_docs").delete().eq("user_id", user.id).eq("template_id", templateId);
+}
+
+/* ------------------------------------------------------------------ */
+/* Published websites (a public snapshot of the author's site)         */
+/* ------------------------------------------------------------------ */
+
+/** Names nobody may use as a site address. Keep in sync with supabase/publish-sites.sql. */
+const RESERVED_SUBDOMAINS: ReadonlySet<string> = new Set([
+  "www", "app", "api", "admin", "mail", "ftp", "blog", "help", "support", "static", "assets", "cdn", "dev", "test",
+  "staging", "status", "docs", "login", "auth", "dashboard", "billing", "ns1", "ns2", "smtp", "imap", "pop", "booknest",
+]);
+
+/** The site address for a username: lowercase, underscores become hyphens, no leading or trailing hyphens. */
+export const subdomainFor = (username: string): string => username.trim().toLowerCase().replace(/_/g, "-").replace(/^-+|-+$/g, "");
+
+export const isReservedSubdomain = (name: string): boolean => RESERVED_SUBDOMAINS.has(name.trim().toLowerCase());
+
+/** Like explain(), with the messages the publish trigger and constraints can produce. */
+function explainPublish(message: string, code?: string): string {
+  if (/username_required/.test(message)) return "Set a username in your profile before publishing.";
+  if (/subdomain_mismatch/.test(message)) return "Your site address must match your username. Check your username in your profile, then publish again.";
+  if (code === "23505" || /subdomain_taken|duplicate key/i.test(message))
+    return "That site address is already taken by another author. Change your username in your profile and try again.";
+  if (code === "23514" && /not_reserved/.test(message)) return "That name is reserved and can't be used as a site address. Change your username in your profile.";
+  if (code === "23514") return "Your username can't be used as a site address. Choose one with at least 3 letters or numbers.";
+  if (code === "PGRST205" || (/published_sites/.test(message) && /does not exist|schema cache/i.test(message)))
+    return "Publishing isn't set up in the database yet. Run supabase/publish-sites.sql in the Supabase SQL Editor, then try again.";
+  return explain(message, code);
+}
+
+/**
+ * Publishes (or updates) the signed-in author's site: saves a copy of `doc` that the public can see at
+ * their address. Autosave never touches this copy; only this call does.
+ */
+export async function publishSite(templateId: string, doc: SiteDoc, meta: { title?: string; authorName?: string } = {}): Promise<{ subdomain: string }> {
+  const sb = requireClient();
+  const user = clerkUser();
+  if (!user) throw new SaveError("Please sign in before publishing your site.");
+
+  const { data: me, error: meErr } = await sb.from("authors").select("username, name").eq("user_id", user.id).maybeSingle();
+  if (meErr) throw new SaveError(explainPublish(meErr.message, meErr.code));
+  const mine = me as { username: string | null; name: string } | null;
+  if (!mine?.username?.trim()) throw new SaveError("Set a username in your profile before publishing.");
+
+  const subdomain = subdomainFor(mine.username);
+  if (!SUBDOMAIN_RE.test(subdomain))
+    throw new SaveError("Your username is too short to be a site address. Choose one with at least 3 letters or numbers in your profile.");
+  if (isReservedSubdomain(subdomain))
+    throw new SaveError(`"${subdomain}" is reserved and can't be used as a site address. Choose a different username in your profile.`);
+
+  // One live site per author: publishing again replaces their existing row.
+  const { error } = await sb.from("published_sites").upsert(
+    {
+      subdomain,
+      user_id: user.id,
+      template_id: templateId,
+      doc,
+      author_name: meta.authorName?.trim() || mine.name || null,
+      title: meta.title?.trim() || null,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw new SaveError(explainPublish(error.message, error.code));
+  return { subdomain };
+}
+
+/** Takes the signed-in author's site offline. */
+export async function unpublishSite(): Promise<void> {
+  const sb = requireClient();
+  const user = clerkUser();
+  if (!user) throw new SaveError("Please sign in first.");
+  const { error } = await sb.from("published_sites").delete().eq("user_id", user.id);
+  if (error) throw new SaveError(explainPublish(error.message, error.code));
+}
+
+/** The signed-in author's live site, or null if they haven't published (or are signed out). */
+export async function getMyPublishedSite(): Promise<{ subdomain: string; templateId: string; doc: unknown; publishedAt: string } | null> {
+  const user = clerkUser();
+  if (!supabase || !user) return null;
+  const { data, error } = await supabase.from("published_sites").select("subdomain, template_id, doc, published_at").eq("user_id", user.id).maybeSingle();
+  if (error) throw new SaveError(explainPublish(error.message, error.code));
+  if (!data) return null;
+  const r = data as { subdomain: string; template_id: string; doc: unknown; published_at: string };
+  return { subdomain: r.subdomain, templateId: r.template_id, doc: r.doc, publishedAt: r.published_at };
+}
+
+/** A published site for the public page. Works signed out (anon key). Null when no such site exists. */
+export async function loadPublishedSite(subdomain: string): Promise<{ doc: unknown; title?: string; authorName?: string } | null> {
+  if (!supabase) return null;
+  const name = subdomain.trim().toLowerCase();
+  if (!SUBDOMAIN_RE.test(name)) return null;
+  const { data, error } = await supabase.from("published_sites").select("doc, title, author_name").eq("subdomain", name).maybeSingle();
+  if (error) throw new SaveError(explainPublish(error.message, error.code));
+  if (!data) return null;
+  const r = data as { doc: unknown; title: string | null; author_name: string | null };
+  return { doc: r.doc, title: r.title ?? undefined, authorName: r.author_name ?? undefined };
 }
 
 /* ------------------------------------------------------------------ */

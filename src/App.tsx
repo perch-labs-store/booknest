@@ -1,4 +1,5 @@
-import { Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Route, Routes, useParams } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Genres from "./pages/Genres";
@@ -19,12 +20,26 @@ import TemplateEditor from "./pages/TemplateEditor";
 import Settings from "./pages/Settings";
 import { About, AuthorGuidelines, Contact, Copyright, Privacy, PublishingGuide, Terms } from "./pages/Info";
 
+const PublishedSite = lazy(() => import("./pages/PublishedSite"));
+
+/** /s/<name>: an author's published site by path. Used as the shareable link when no root domain is set, and for testing. */
+function SiteByPath() {
+  const { subdomain = "" } = useParams();
+  return (
+    <Suspense fallback={null}>
+      <PublishedSite subdomain={subdomain.toLowerCase()} />
+    </Suspense>
+  );
+}
+
 const comingSoonPages: { path: string; title: string }[] = [
 ];
 
 export default function App() {
   return (
     <Routes>
+      {/* Outside the Layout: a published site has none of the BookNest chrome. */}
+      <Route path="s/:subdomain" element={<SiteByPath />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="genres" element={<Genres />} />
