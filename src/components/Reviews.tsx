@@ -4,7 +4,7 @@ import Avatar from "./Avatar";
 import ConfirmModal from "./ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "../context/AuthModalContext";
-import { deleteReply, deleteReview, loadRemote, loadReviews, saveReply, saveReview, type Review } from "../data/remote";
+import { deleteReply, deleteReview, refreshBookStats, loadReviews, saveReply, saveReview, type Review } from "../data/remote";
 
 function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -68,7 +68,7 @@ export default function Reviews({ bookId }: { bookId: number }) {
     try {
       await saveReview(bookId, rating, body);
       await refresh();
-      await loadRemote(); // new average rating and count
+      await refreshBookStats(bookId); // new average rating and count
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save your review.");
     } finally {
@@ -102,7 +102,7 @@ export default function Reviews({ bookId }: { bookId: number }) {
     try {
       await deleteReview(r.id);
       await refresh();
-      await loadRemote();
+      await refreshBookStats(bookId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete your review.");
     }

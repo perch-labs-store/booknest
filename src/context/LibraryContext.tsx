@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { loadMyLibrary, loadRemote, setBookFlag } from "../data/remote";
+import { loadMyLibrary, refreshBookStats, setBookFlag } from "../data/remote";
 import { useAuth } from "./AuthContext";
 import { useAuthModal } from "./AuthModalContext";
 
@@ -52,7 +52,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         });
       apply(on); // instant feedback, undone if it can't be saved
       setBookFlag(kind, bookId, on)
-        .then(() => loadRemote()) // refresh the like / save counts
+        .then(() => refreshBookStats(bookId)) // refresh just this book's like / save counts
         .catch((e) => {
           console.error("[BookNest] Could not save:", e);
           apply(!on);

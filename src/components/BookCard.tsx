@@ -32,6 +32,9 @@ export default function BookCard({ book, badge, note }: Props) {
           src={book.cover}
           alt={`${book.title} cover`}
           loading="lazy"
+          decoding="async"
+          width={300}
+          height={400}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
         />
       </div>

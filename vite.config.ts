@@ -13,6 +13,11 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [
     react(),
+    {
+      // Open the connection to Supabase while the app code is still downloading, so the first books request starts sooner.
+      name: "preconnect-supabase",
+      transformIndexHtml: () => (supabaseUrl ? [{ tag: "link", attrs: { rel: "preconnect", href: supabaseUrl, crossorigin: "" }, injectTo: "head-prepend" as const }] : []),
+    },
     VitePWA({
       // New deploys are picked up automatically and the page reloads onto the new version.
       registerType: "autoUpdate",
@@ -45,8 +50,9 @@ export default defineConfig(({ mode }) => {
       workbox: {
         // Adds the push-notification handlers (public/push-sw.js) to the generated service worker.
         importScripts: ["push-sw.js"],
-        // Precache the app shell + book covers so the app opens offline.
-        globPatterns: ["**/*.{js,css,html,svg,png,jpg,ico,woff2}"],
+        // Precache only the app shell. Pictures (genre art, template photos, covers) are cached the first time they
+        // are seen instead, so a first visit doesn't spend a slow connection downloading images nobody has opened.
+        globPatterns: ["**/*.{js,css,html,svg,ico,woff2}", "icons/*.png"],
         // Client-side routing: unknown navigations get index.html.
         // This also covers every author subdomain, because the service worker is per address.
         navigateFallback: "/index.html",
@@ -63,6 +69,26 @@ export default defineConfig(({ mode }) => {
               cacheName: "published-sites",
               networkTimeoutSeconds: 4,
               expiration: { maxEntries: 20, maxAgeSeconds: 5 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // Book covers uploaded by authors (never change: each upload gets a new file name).
+            urlPattern: new RegExp(`^${supabaseOrigin}/storage/v1/object/public/`, "i"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "supabase-images",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // The app's own pictures (hashed build files and demo covers).
+            urlPattern: ({ request, url }: { request: Request; url: URL }) => request.destination === "image" && url.origin === self.location.origin,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "app-images",
+              expiration: { maxEntries: 150, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [200] },
             },
           },

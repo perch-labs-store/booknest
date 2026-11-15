@@ -7,9 +7,11 @@ interface Props {
   title: string;
   books: Book[];
   to?: string;
+  /** Show placeholder cards while the books are still arriving. */
+  loading?: boolean;
 }
 
-export default function BookSection({ title, books, to = "/new-releases" }: Props) {
+export default function BookSection({ title, books, to = "/new-releases", loading = false }: Props) {
   return (
     <section className="mt-8">
       <div className="mb-4 flex items-center justify-between">
@@ -18,7 +20,17 @@ export default function BookSection({ title, books, to = "/new-releases" }: Prop
           View All <ArrowRight size={14} />
         </Link>
       </div>
-      {books.length > 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5" aria-busy="true" aria-label={`Loading ${title}`}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className={`animate-pulse ${i > 1 ? "hidden sm:block" : ""} ${i > 2 ? "sm:hidden md:block" : ""}`}>
+              <div className="aspect-[3/4] rounded-xl border border-line bg-surface" />
+              <div className="mt-2.5 h-3.5 w-3/4 rounded bg-surface" />
+              <div className="mt-2 h-3 w-1/2 rounded bg-surface" />
+            </div>
+          ))}
+        </div>
+      ) : books.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
           {books.map((b) => (
             <BookCard key={b.id} book={b} />

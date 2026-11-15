@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
@@ -16,9 +16,22 @@ export default function Layout() {
   const { signedIn, loading } = useAuth();
   const dataVersion = useRemoteVersion();
 
-  // Load books and authors from Supabase, and again after signing in or out (drafts are private).
+  // Start loading books straight away: they're public, so there's no need to wait for Clerk to restore the session.
+  // On the Home page the most-liked books arrive first and the rest of the catalog follows in the background.
+  const settled = useRef(false);
   useEffect(() => {
-    if (!loading) loadRemote().catch((e) => console.error("[BookNest] Could not load data:", e));
+    loadRemote({ quick: pathname === "/" }).catch((e) => console.error("[BookNest] Could not load data:", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Once the session is known, load again only if it matters: signed in (own drafts), or signed out after being signed in.
+  useEffect(() => {
+    if (loading) return;
+    if (!settled.current) {
+      settled.current = true;
+      if (!signedIn) return; // signed-out visitors already have everything they can see
+    }
+    loadRemote().catch((e) => console.error("[BookNest] Could not load data:", e));
   }, [signedIn, loading]);
 
   // <main> is the scroll container, so reset it when navigating to a new page.
@@ -50,8 +63,11 @@ export default function Layout() {
             <Menu size={20} />
           </button>
           {/* Re-render pages when data arrives. The Add Book form and book pages manage their own updates so nothing you typed is lost. */}
-          <div key={pathname.startsWith("/add-book") || pathname.startsWith("/books/") ? "stable" : dataVersion}>
-            <Outlet />
+          {/* Home, the Hero and book pages watch the data themselves, so they are not torn down and rebuilt on every refresh. */}
+          <div key={pathname === "/" || pathname.startsWith("/add-book") || pathname.startsWith("/books/") ? "stable" : dataVersion}>
+            <Suspense fallback={<div className="min-h-[60vh]" aria-busy="true" />}>
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </main>

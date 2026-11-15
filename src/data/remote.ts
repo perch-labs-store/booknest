@@ -10,6 +10,7 @@ import { normalizeUrl, type BookLink, type LinkFormat, type LinkStore } from "./
 import type { Discount } from "./discount";
 import type { SiteDoc } from "./templates";
 import { SUBDOMAIN_RE } from "../lib/host";
+import { prepareCover } from "../utils/image";
 
 /* ------------------------------------------------------------------ */
 /* Change notifications: pages re-render when the database data loads  */
@@ -53,11 +54,11 @@ interface BookRow {
   saves_count: number;
   rating_avg: number;
   rating_count: number;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
   author: { id: string; name: string } | null;
   book_genres: { position: number; genres: { name: string } | null }[];
-  book_links: { type: string; format: LinkFormat; url: string }[];
+  book_links?: { type: string; format: LinkFormat; url: string }[];
 }
 
 interface AuthorRow {
@@ -80,37 +81,31 @@ interface AuthorRow {
 
 const daysBetween = (iso: string) => Math.floor((Date.now() - new Date(`${iso.slice(0, 10)}T00:00:00`).getTime()) / 86_400_000);
 
-/**
- * Loads books and authors from Supabase into the in-memory lists the pages read from.
- * Safe to call again at any time (after sign-in, after saving a book). Does nothing when
- * Supabase isn't configured.
- */
-export async function loadRemote(): Promise<void> {
-  if (!supabase) return;
-  const me = clerkUser()?.id;
+const BOOK_COLS =
+  "id, title, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code, likes_count, saves_count, rating_avg, rating_count, created_at, author:authors!author_id(id, name), book_genres(position, genres(name))";
+/** How many of the most-liked books the quick (Home) load fetches. Enough for Trending, Recommended and the Hero. */
+const QUICK_LIMIT = 40;
+const CACHE_KEY = "booknest:home:v1";
 
-  const [booksRes, authorsRes] = await Promise.all([
-    supabase
-      .from("books")
-      .select(
-        "id, title, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code, likes_count, saves_count, rating_avg, rating_count, created_by, created_at, author:authors!author_id(id, name), book_genres(position, genres(name)), book_links(type, format, url)",
-      )
-      .order("created_at", { ascending: false }),
-    supabase.from("authors").select("id, name, genres, bio, about, banner_url, featured_book_id, languages, followers_count, books_count, rating_avg, rating_count, verified, growth_pct, created_at"),
-  ]);
-  if (booksRes.error) {
-    console.error("[BookNest] Could not load books:", booksRes.error.message);
-    return;
-  }
+/** True once the app has books to show (from the saved copy, the quick load or the full load) or loading has failed. */
+let ready = !supabase;
+/** True once the full catalog has been applied; a late quick result must not overwrite it. */
+let fullLoaded = false;
+let loadSeq = 0;
+export const isRemoteReady = () => ready;
 
-  const rows = booksRes.data as unknown as BookRow[];
-  const discountOf = (r: BookRow): Discount | undefined =>
-    r.discount_percent ? { percent: r.discount_percent, endsOn: r.discount_ends_on ?? undefined, code: r.discount_code ?? undefined } : undefined;
-  const linksOf = (r: BookRow): BookLink[] =>
-    r.book_links.map((l) => ({ format: l.format, store: (l.type === "amazon" ? "amazon" : "other") as LinkStore, url: l.url }));
+const notify = () => {
+  version++;
+  listeners.forEach((fn) => fn());
+};
 
-  const published = rows.filter((r) => r.status === "published");
+const discountOf = (r: BookRow): Discount | undefined =>
+  r.discount_percent ? { percent: r.discount_percent, endsOn: r.discount_ends_on ?? undefined, code: r.discount_code ?? undefined } : undefined;
+const linksOf = (r: BookRow): BookLink[] =>
+  (r.book_links ?? []).map((l) => ({ format: l.format, store: (l.type === "amazon" ? "amazon" : "other") as LinkStore, url: l.url }));
 
+/** Fills `catalog` and `releases` from published book rows. */
+function applyPublished(published: BookRow[]) {
   catalog.splice(
     0,
     catalog.length,
@@ -148,6 +143,92 @@ export async function loadRemote(): Promise<void> {
       discount: discountOf(r),
     })),
   );
+}
+
+/** Saved copy of the last quick load, so a returning visitor sees books straight away (even offline or on a slow network). */
+function readCache(): BookRow[] | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    const rows = raw ? (JSON.parse(raw) as BookRow[]) : null;
+    return Array.isArray(rows) && rows.length ? rows : null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(rows: BookRow[]) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(rows));
+  } catch {
+    /* storage full or blocked: the app works the same, just without the saved copy */
+  }
+}
+
+// Show the saved copy before the first render; the network result replaces it moments later.
+if (supabase) {
+  const cached = readCache();
+  if (cached) {
+    applyPublished(cached);
+    resetBookCache();
+    ready = true;
+  }
+}
+
+/** The most-liked published books with only what the cards need. Small, so it arrives fast on a slow network. */
+async function loadQuick(seq: number): Promise<void> {
+  if (!supabase) return;
+  const { data, error } = await supabase
+    .from("books")
+    .select(BOOK_COLS)
+    .eq("status", "published")
+    .order("likes_count", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(QUICK_LIMIT);
+  if (error || !data) {
+    console.error("[BookNest] Could not load top books:", error?.message);
+    return;
+  }
+  const rows = data as unknown as BookRow[];
+  writeCache(rows);
+  if (fullLoaded || seq !== loadSeq) return;
+  applyPublished(rows);
+  resetBookCache();
+  ready = true;
+  notify();
+}
+
+/**
+ * Loads books and authors from Supabase into the in-memory lists the pages read from.
+ * Safe to call again at any time (after sign-in, after saving a book). Does nothing when
+ * Supabase isn't configured.
+ *
+ * `quick` (used on the Home page) first fetches only the most-liked books so Trending, Recommended and the
+ * Hero fill in right away, then loads everything else in the background.
+ */
+export async function loadRemote(opts: { quick?: boolean } = {}): Promise<void> {
+  if (!supabase) return;
+  const seq = ++loadSeq;
+  if (opts.quick && !fullLoaded) await loadQuick(seq).catch((e) => console.error("[BookNest] Quick load failed:", e));
+  if (seq !== loadSeq) return; // a newer load has started; let it finish
+  const me = clerkUser()?.id;
+
+  const [booksRes, authorsRes] = await Promise.all([
+    supabase
+      .from("books")
+      .select(`${BOOK_COLS}, created_by, book_links(type, format, url)`)
+      .order("created_at", { ascending: false }),
+    supabase.from("authors").select("id, name, genres, bio, about, banner_url, featured_book_id, languages, followers_count, books_count, rating_avg, rating_count, verified, growth_pct, created_at"),
+  ]);
+  if (booksRes.error) {
+    console.error("[BookNest] Could not load books:", booksRes.error.message);
+    ready = true;
+    notify();
+    return;
+  }
+  if (seq !== loadSeq) return;
+
+  const rows = booksRes.data as unknown as BookRow[];
+  const published = rows.filter((r) => r.status === "published");
+  applyPublished(published);
 
   initialMyBooks.splice(
     0,
@@ -190,9 +271,29 @@ export async function loadRemote(): Promise<void> {
     );
   }
 
+  fullLoaded = true;
+  ready = true;
   resetBookCache();
-  version++;
-  listeners.forEach((fn) => fn());
+  notify();
+}
+
+/**
+ * Updates one book's like, save and rating numbers without re-downloading the catalog
+ * (used after a like, a save or a review).
+ */
+export async function refreshBookStats(bookId: number): Promise<void> {
+  if (!supabase) return;
+  const { data, error } = await supabase.from("books").select("likes_count, saves_count, rating_avg, rating_count").eq("id", bookId).maybeSingle();
+  if (error || !data) return;
+  const d = data as { likes_count: number; saves_count: number; rating_avg: number; rating_count: number };
+  const c = catalog.find((b) => b.id === bookId);
+  if (c) Object.assign(c, { likes: d.likes_count, saves: d.saves_count, rating: Number(d.rating_avg), ratingCount: d.rating_count });
+  const r = releases.find((b) => b.id === bookId);
+  if (r) Object.assign(r, { likes: String(d.likes_count), saves: String(d.saves_count), likeCount: d.likes_count });
+  const m = initialMyBooks.find((b) => b.id === bookId);
+  if (m) Object.assign(m, { likes: d.likes_count, saves: d.saves_count });
+  resetBookCache();
+  notify();
 }
 
 /* ------------------------------------------------------------------ */
@@ -248,8 +349,9 @@ export async function saveBook(input: NewBook): Promise<void> {
   // 2. Cover image -> storage (folder named after the user, as the policies require).
   let coverUrl: string | null = null;
   if (input.cover) {
-    const path = `${user.id}/${Date.now()}-${slug}.${EXT[input.cover.type] ?? "jpg"}`;
-    const { error: upErr } = await supabase.storage.from("covers").upload(path, input.cover, { contentType: input.cover.type, upsert: false });
+    const cover = await prepareCover(input.cover);
+    const path = `${user.id}/${Date.now()}-${slug}.${EXT[cover.type] ?? "jpg"}`;
+    const { error: upErr } = await supabase.storage.from("covers").upload(path, cover, { contentType: cover.type, upsert: false, cacheControl: "31536000" });
     if (upErr) throw new SaveError(explain(`Cover upload failed: ${upErr.message}`));
     coverUrl = supabase.storage.from("covers").getPublicUrl(path).data.publicUrl;
   }
@@ -991,8 +1093,9 @@ export async function updateBook(id: number, input: NewBook, keepCoverUrl: strin
 
   let coverUrl = keepCoverUrl;
   if (input.cover) {
-    const path = `${user.id}/${Date.now()}-${slug}.${EXT[input.cover.type] ?? "jpg"}`;
-    const { error: upErr } = await sb.storage.from("covers").upload(path, input.cover, { contentType: input.cover.type, upsert: false });
+    const cover = await prepareCover(input.cover);
+    const path = `${user.id}/${Date.now()}-${slug}.${EXT[cover.type] ?? "jpg"}`;
+    const { error: upErr } = await sb.storage.from("covers").upload(path, cover, { contentType: cover.type, upsert: false, cacheControl: "31536000" });
     if (upErr) throw new SaveError(explain(`Cover upload failed: ${upErr.message}`));
     coverUrl = sb.storage.from("covers").getPublicUrl(path).data.publicUrl;
   }
