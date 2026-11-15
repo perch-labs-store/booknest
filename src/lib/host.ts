@@ -44,3 +44,14 @@ export function siteUrl(subdomain: string): string {
 
 /** Short display form of the address, e.g. "jane.fablebook.store" (just "jane" when no root domain is set). */
 export const siteHost = (subdomain: string): string => (ROOT_DOMAIN ? `${subdomain.trim().toLowerCase()}.${ROOT_DOMAIN}` : subdomain);
+
+/** A clean username suggestion from a display name: "Jane O'Brien" -> "janeobrien". 3-20 letters/numbers, or "" if the name has too few. */
+export function suggestUsername(name: string): string {
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 20);
+  return base.length >= 3 ? base : "";
+}

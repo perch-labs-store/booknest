@@ -16,6 +16,22 @@ Replace `yourdomain.com` below with your real domain.
 6. **Clerk**: author sites do not load Clerk, so nothing to configure there. Just make sure your main domain
    (`yourdomain.com`) stays an allowed domain in Clerk.
 
+## Link preview (the card shown on X, Threads, WhatsApp, Facebook, LinkedIn)
+
+Posting `username.yourdomain.com` shows a card with the author's photo, name and a line about the site.
+
+- Social apps do not run JavaScript, so `middleware.ts` sends author-site visits through `api/site.ts`, which adds the
+  title, description and image tags to the page. `api/og.ts` draws the 1200x630 image.
+- The card uses the photo from the author's profile (About photo first, then avatar), the site's colours, the name and
+  the hero headline. No photo = a coloured circle with their initial. Only JPEG and PNG photos can be drawn; a WebP photo
+  also falls back to the initial.
+- No new settings: the functions use the same `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_ROOT_DOMAIN`
+  already set in Vercel. They only read public data.
+- After deploying, check a real site in the [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+  and the LinkedIn Post Inspector, and open `https://username.yourdomain.com/api/og?site=username` to see the image.
+- Platforms cache cards. After an author changes their photo or headline and presses **Update site**, the image address
+  changes by itself, but an already-posted link can take a while to refresh.
+
 ## Test checklist
 
 - [ ] Sign in, open Profile and set a username (3-20 letters, numbers or underscores).
@@ -23,6 +39,7 @@ Replace `yourdomain.com` below with your real domain.
 - [ ] Open `username.yourdomain.com` (underscores in the username become hyphens). The site shows with no Fablebook menu.
 - [ ] Edit the site, press **Update site**. Reload the live site: the change appears within about 5 minutes (usually at once).
 - [ ] Add a link to a button (the small "Link" field in edit mode) and check it opens in a new tab.
+- [ ] View the page source of the live site: it should contain `og:image`. Paste the link into a debugger (above) and check the card.
 - [ ] Press **Unpublish**. The address now shows "This site isn't published yet".
 
 ## Testing without a domain

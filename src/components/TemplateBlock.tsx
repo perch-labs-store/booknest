@@ -3,7 +3,7 @@ import { Check, ChevronDown, Menu, Minus, Plus, Star, X } from "lucide-react";
 import EditableText from "./EditableText";
 import EditableImage from "./EditableImage";
 import SocialIcons from "./SocialIcons";
-import { COVERS, imageKind, imageSrc, type Block, type Item, type Theme } from "../data/templates";
+import { COVERS, footerLink, imageKind, imageSrc, legalFromLabel, type Block, type Item, type Theme } from "../data/templates";
 
 interface Props {
   block: Block;
@@ -14,6 +14,8 @@ interface Props {
   onNavigate?: (label: string, link?: string) => void;
   social?: Record<string, string>;
   onEditSocial?: (networkId: string) => void;
+  /** Published site only: says whether a footer link leads anywhere, so dead ones can be hidden. */
+  canGo?: (label: string, link?: string) => boolean;
 }
 
 /** Readable text colour for a given background hex. */
@@ -33,7 +35,7 @@ const SHADOW = "shadow-[0_24px_50px_-12px_rgba(0,0,0,0.55)]";
  * so it responds to the width of the preview frame, not the browser window.
  */
 export default function TemplateBlock(props: Props) {
-  const { block, theme, editable, onChange, onNavigate, social, onEditSocial } = props;
+  const { block, theme, editable, onChange, onNavigate, social, onEditSocial, canGo } = props;
   const heading = theme.font === "serif" ? "font-bold tracking-tight" : "font-extrabold tracking-tight";
   const items = block.items ?? [];
   const images = block.images ?? [];
@@ -527,17 +529,34 @@ export default function TemplateBlock(props: Props) {
                   <div key={ci}>
                     <EditableText as="p" value={col.title} editable={editable} onChange={(title) => setCol({ title })} className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] opacity-60" />
                     <ul className="flex flex-col gap-2.5 text-sm">
-                      {col.links.map((l, li) => (
-                        <li key={li}>
-                          <EditableText
-                            value={l}
-                            editable={editable}
-                            onChange={(v) => setCol({ links: col.links.map((x, idx) => (idx === li ? v : x)) })}
-                            onActivate={go(l)}
-                            className="opacity-80"
-                          />
-                        </li>
-                      ))}
+                      {col.links.map((l, li) => {
+                        const url = col.urls?.[li];
+                        if (!editable && canGo && !canGo(l, url)) return null;
+                        return (
+                          <li key={li}>
+                            <EditableText
+                              value={l}
+                              editable={editable}
+                              onChange={(v) => setCol({ links: col.links.map((x, idx) => (idx === li ? v : x)) })}
+                              onActivate={go(l, footerLink(l, url))}
+                              className="opacity-80"
+                            />
+                            {editable && (
+                              <div className="mt-1">
+                                <LinkField
+                                  value={url}
+                                  placeholder={legalFromLabel(l) ? "Built-in page" : "Section or https://…"}
+                                  onChange={(v) => {
+                                    const urls = col.links.map((_, idx) => col.urls?.[idx] ?? "");
+                                    urls[li] = v;
+                                    setCol({ urls });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 );
@@ -545,10 +564,22 @@ export default function TemplateBlock(props: Props) {
             </div>
             <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t pt-6 text-xs @2xl:flex-row" style={line}>
               {text(block.text, (t) => onChange({ text: t }), "opacity-60")}
-              <nav className="flex gap-5 opacity-70">
-                {items.map((it, i) => (
-                  <EditableText key={i} value={it.title} editable={editable} onChange={(title) => setItem(i, { title })} />
-                ))}
+              <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 opacity-70">
+                {items.map((it, i) => {
+                  if (!editable && canGo && !canGo(it.title, it.meta)) return null;
+                  return (
+                    <span key={i} className="inline-flex flex-col items-center gap-1">
+                      <EditableText value={it.title} editable={editable} onChange={(title) => setItem(i, { title })} onActivate={go(it.title, footerLink(it.title, it.meta))} />
+                      {editable && (
+                        <LinkField
+                          value={it.meta}
+                          placeholder={legalFromLabel(it.title) ? "Built-in page" : "https://…"}
+                          onChange={(meta) => setItem(i, { meta })}
+                        />
+                      )}
+                    </span>
+                  );
+                })}
               </nav>
             </div>
           </div>
@@ -562,7 +593,7 @@ export default function TemplateBlock(props: Props) {
 /* ------------------------------------------------------------------ */
 
 /** Edit mode only: the address a button opens on the published site. */
-function LinkField({ value, onChange }: { value: string | undefined; onChange: (value: string) => void }) {
+function LinkField({ value, onChange, placeholder = "https://… or mailto:…" }: { value: string | undefined; onChange: (value: string) => void; placeholder?: string }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] opacity-70 focus-within:opacity-100" style={{ borderColor: "currentColor" }}>
       <span className="font-semibold">Link</span>
@@ -571,8 +602,8 @@ function LinkField({ value, onChange }: { value: string | undefined; onChange: (
         inputMode="url"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="https://… or mailto:…"
-        aria-label="Button link"
+        placeholder={placeholder}
+        aria-label="Link address"
         className="w-36 min-w-0 bg-transparent font-normal text-inherit outline-none placeholder:opacity-50"
       />
     </label>

@@ -1,3 +1,4 @@
+import { sanitizeLink } from "../lib/safeLink";
 export const CATEGORIES = ["Author Site", "Book Launch", "Bookstore", "Blog & Newsletter", "Series Page", "Publisher", "Book Club"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -31,6 +32,8 @@ export interface Item {
 export interface FooterColumn {
   title: string;
   links: string[];
+  /** Optional address for each link, same order as `links`. Empty = the built-in page or the section the label names. */
+  urls?: string[];
 }
 
 export interface Block {
@@ -580,6 +583,41 @@ export const buildDoc = (t: TemplateDef): SiteDoc => {
     social: { ...DEFAULT_SOCIAL },
   };
 };
+
+/* ------------------------------------------------------------------ */
+/* Footer links and the built-in legal pages                           */
+/* ------------------------------------------------------------------ */
+
+export type LegalKind = "privacy" | "terms" | "cookies";
+export const LEGAL_KINDS: LegalKind[] = ["privacy", "terms", "cookies"];
+const LEGAL_PREFIX = "page:";
+
+/** Which built-in legal page a footer label means ("Privacy Policy" -> privacy), if any. */
+export function legalFromLabel(label: string): LegalKind | undefined {
+  const l = label.toLowerCase();
+  return /privacy/.test(l) ? "privacy" : /terms/.test(l) ? "terms" : /cookie/.test(l) ? "cookies" : undefined;
+}
+/** The internal link value that opens a legal page. */
+export const legalHref = (kind: LegalKind) => `${LEGAL_PREFIX}${kind}`;
+/** Reads an internal link value back, or undefined when it is an ordinary link. */
+export const parseLegalHref = (link?: string): LegalKind | undefined => {
+  const k = link?.startsWith(LEGAL_PREFIX) ? link.slice(LEGAL_PREFIX.length) : "";
+  return (LEGAL_KINDS as string[]).includes(k) ? (k as LegalKind) : undefined;
+};
+
+/** What a footer link actually opens: the author's own link, else the built-in legal page its label names. */
+export function footerLink(label: string, link?: string): string | undefined {
+  if (link?.trim()) return link.trim();
+  const k = legalFromLabel(label);
+  return k ? legalHref(k) : undefined;
+}
+
+/** Whether a footer link leads anywhere on this page. Links that don't are hidden on the live site. */
+export function footerHasTarget(label: string, link: string | undefined, blocks: Block[]): boolean {
+  if (link?.trim()) return !!sanitizeLink(link);
+  if (legalFromLabel(label)) return true;
+  return resolveTarget(label, blocks) !== undefined;
+}
 
 /**
  * Where a nav link or button should scroll to, judged by its label ("About" -> the About section).

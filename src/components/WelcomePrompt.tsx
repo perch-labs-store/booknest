@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { BookOpen } from "lucide-react";
 import { useProfile } from "../context/ProfileContext";
+import { ROOT_DOMAIN, suggestUsername } from "../lib/host";
 
 const inputCls =
   "h-11 w-full rounded-lg border bg-bg px-3 text-sm text-ink placeholder:text-muted/70 focus:border-brand focus:outline-none";
@@ -12,6 +13,7 @@ export default function WelcomePrompt() {
   const nameRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [bio, setBio] = useState("");
   const [errors, setErrors] = useState<{ name?: string; username?: string }>({});
   const [saving, setSaving] = useState(false);
@@ -21,21 +23,23 @@ export default function WelcomePrompt() {
   useEffect(() => {
     if (!needsWelcome) return;
     setName(profile.name && profile.name !== "Reader" ? profile.name : "");
-    setUsername(profile.username);
+    setUsername(suggestUsername(profile.name && profile.name !== "Reader" ? profile.name : ""));
+    setUsernameTouched(false);
     nameRef.current?.focus();
-  }, [needsWelcome, profile.name, profile.username]);
+  }, [needsWelcome, profile.name]);
 
   if (!needsWelcome) return null;
 
   const save = async () => {
     const er: typeof errors = {};
     if (!name.trim()) er.name = "Enter the name readers will see.";
-    if (username && !/^[a-zA-Z0-9_]{3,20}$/.test(username)) er.username = "3–20 letters, numbers or underscores.";
+    const finalUsername = username || suggestUsername(name);
+    if (finalUsername && !/^[a-zA-Z0-9_]{3,20}$/.test(finalUsername)) er.username = "3–20 letters, numbers or underscores.";
     setErrors(er);
     if (er.name || er.username) return;
     setSaving(true);
     setError(null);
-    const err = await update({ name: name.trim(), username, bio: bio.trim().slice(0, 160) });
+    const err = await update({ name: name.trim(), username: finalUsername, bio: bio.trim().slice(0, 160) });
     setSaving(false);
     if (err) return setError(err);
     finishWelcome();
@@ -53,13 +57,14 @@ export default function WelcomePrompt() {
         <div className="space-y-4">
           <div>
             <label htmlFor={`${uid}-n`} className="mb-1.5 block text-xs font-semibold text-ink">Author name</label>
-            <input ref={nameRef} id={`${uid}-n`} value={name} onChange={(e) => { setName(e.target.value); setErrors((x) => ({ ...x, name: undefined })); }} maxLength={80} placeholder="The name on your books" autoComplete="name" className={`${inputCls} ${errors.name ? "border-error" : "border-line"}`} />
+            <input ref={nameRef} id={`${uid}-n`} value={name} onChange={(e) => { setName(e.target.value); if (!usernameTouched) setUsername(suggestUsername(e.target.value)); setErrors((x) => ({ ...x, name: undefined })); }} maxLength={80} placeholder="The name on your books" autoComplete="name" className={`${inputCls} ${errors.name ? "border-error" : "border-line"}`} />
             {errors.name && <p role="alert" className="mt-1 text-xs text-error">{errors.name}</p>}
           </div>
           <div>
             <label htmlFor={`${uid}-u`} className="mb-1.5 block text-xs font-semibold text-ink">Username <span className="font-normal text-muted">(optional)</span></label>
-            <input id={`${uid}-u`} value={username} onChange={(e) => { setUsername(e.target.value); setErrors((x) => ({ ...x, username: undefined })); }} maxLength={20} placeholder="yourname" autoCapitalize="none" className={`${inputCls} ${errors.username ? "border-error" : "border-line"}`} />
+            <input id={`${uid}-u`} value={username} onChange={(e) => { setUsername(e.target.value.replace(/\s/g, "")); setUsernameTouched(true); setErrors((x) => ({ ...x, username: undefined })); }} maxLength={20} placeholder="yourname" autoCapitalize="none" className={`${inputCls} ${errors.username ? "border-error" : "border-line"}`} />
             {errors.username && <p role="alert" className="mt-1 text-xs text-error">{errors.username}</p>}
+            {ROOT_DOMAIN && !errors.username && <p className="mt-1 text-xs text-muted">Your author website: {(username || "yourname").toLowerCase().replace(/_/g, "-")}.{ROOT_DOMAIN}. You can change it any time.</p>}
           </div>
           <div>
             <label htmlFor={`${uid}-b`} className="mb-1.5 block text-xs font-semibold text-ink">Short bio <span className="font-normal text-muted">(optional)</span></label>

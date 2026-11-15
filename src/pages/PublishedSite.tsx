@@ -1,13 +1,20 @@
 import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import TemplateBlock from "../components/TemplateBlock";
+import LegalPage, { LEGAL_TITLES, siteIdentity } from "../components/SiteLegal";
 import { siteFont } from "../components/SitePreview";
 import { loadPublishedSite } from "../data/remote";
-import { buildDoc, resolveTarget, TEMPLATES, type Block, type SiteDoc } from "../data/templates";
+import { buildDoc, footerHasTarget, LEGAL_KINDS, parseLegalHref, resolveTarget, TEMPLATES, type Block, type LegalKind, type SiteDoc } from "../data/templates";
 import { ROOT_DOMAIN } from "../lib/host";
 import { openLink, sanitizeLink } from "../lib/safeLink";
 
 /** The main Fablebook site: https://<ROOT_DOMAIN>, or "/" when no root domain is configured. */
 const MAIN_SITE = ROOT_DOMAIN ? `https://${ROOT_DOMAIN}` : "/";
+
+/** Which legal page the address asks for (?page=privacy), if any. Works on name.domain.com, /s/name and ?site=name alike. */
+const readPage = (): LegalKind | null => {
+  const p = new URLSearchParams(window.location.search).get("page");
+  return (LEGAL_KINDS as string[]).includes(p ?? "") ? (p as LegalKind) : null;
+};
 
 type State =
   | { kind: "loading" }
@@ -102,6 +109,23 @@ function Skeleton() {
 export default function PublishedSite({ subdomain }: { subdomain: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [page, setPage] = useState<LegalKind | null>(readPage);
+
+  useEffect(() => {
+    const onPop = () => setPage(readPage());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  /** Opens a legal page (or the main page when null) and keeps the address bar in step, so Back and shared links work. */
+  const openPage = useCallback((kind: LegalKind | null) => {
+    const url = new URL(window.location.href);
+    if (kind) url.searchParams.set("page", kind);
+    else url.searchParams.delete("page");
+    window.history.pushState({}, "", url);
+    setPage(kind);
+    window.scrollTo({ top: 0 });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +160,7 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
     }
     const title = ready.title?.trim() || ready.authorName?.trim() || subdomain;
     const description = describe(ready.doc.blocks);
-    document.title = title;
+    document.title = page ? `${LEGAL_TITLES[page]} · ${title}` : title;
     if (description) {
       named("description", description);
       og("og:description", description);
@@ -147,12 +171,14 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
     named("theme-color", ready.doc.theme.bg);
     document.documentElement.style.backgroundColor = ready.doc.theme.bg;
     document.body.style.backgroundColor = ready.doc.theme.bg;
-  }, [ready, state.kind, subdomain]);
+  }, [ready, state.kind, subdomain, page]);
 
   const blocks = ready?.doc.blocks;
   /** Clicks on buttons and nav links: open the author's link, or scroll to the section the label names. */
   const navigate = useCallback(
     (label: string, link?: string) => {
+      const legal = parseLegalHref(link);
+      if (legal) return openPage(legal);
       if (link && link.trim()) {
         const href = sanitizeLink(link);
         if (href) openLink(href);
@@ -165,8 +191,10 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
       const id = blocks ? resolveTarget(label, blocks) : undefined;
       document.getElementById(id ? `blk-${id}` : "")?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
     },
-    [blocks],
+    [blocks, openPage],
   );
+
+  const canGo = useCallback((label: string, link?: string) => footerHasTarget(label, link, blocks ?? []), [blocks]);
 
   const theme = ready?.doc.theme;
   const wrapStyle = useMemo(
@@ -193,12 +221,27 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
     );
 
   const { doc } = state;
+  if (page) {
+    const { name, email } = siteIdentity(doc.blocks, state.authorName ?? state.title ?? subdomain);
+    return (
+      <Boundary>
+        <div className="@container min-h-screen overflow-x-clip" style={wrapStyle}>
+          <LegalPage kind={page} theme={doc.theme} name={name} email={email} onBack={() => openPage(null)} />
+          <p className="px-6 py-5 text-center text-xs opacity-60">
+            <a href={MAIN_SITE} className="underline-offset-4 hover:underline">
+              Made with Fablebook
+            </a>
+          </p>
+        </div>
+      </Boundary>
+    );
+  }
   return (
     <Boundary>
       <div className="@container min-h-screen overflow-x-clip" style={wrapStyle}>
         {doc.blocks.map((b) => (
           <div key={b.id} id={`blk-${b.id}`} className="scroll-mt-20">
-            <TemplateBlock block={b} theme={doc.theme} editable={false} onChange={() => {}} onNavigate={navigate} social={doc.social} />
+            <TemplateBlock block={b} theme={doc.theme} editable={false} onChange={() => {}} onNavigate={navigate} social={doc.social} canGo={canGo} />
           </div>
         ))}
         <p className="px-6 py-5 text-center text-xs opacity-60">

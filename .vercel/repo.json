@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_4VyrSldIJVtIwwXwchmB7VnJVuAI",
+      "name": "booknest-koal",
+      "directory": ".",
+      "orgId": "team_woVTALz2WQt9TQKW7ptmpJK1"
+    }
+  ]
+}

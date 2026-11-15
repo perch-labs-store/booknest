@@ -323,18 +323,30 @@ $$;
 create or replace function public.ensure_my_author(p_name text default null) returns public.authors
 language plpgsql security definer set search_path = '' as $$
 declare
-  uid  text := public.requesting_user_id();
-  nm   text := coalesce(nullif(trim(p_name), ''), 'Reader');
-  base text := trim(both '-' from left(public.slugify(nm), 13));
-  slug text;
-  me   public.authors;
+  uid   text := public.requesting_user_id();
+  nm    text := coalesce(nullif(trim(p_name), ''), 'Reader');
+  slug  text := coalesce(nullif(trim(both '-' from left(public.slugify(nm), 13)), ''), 'reader') || '-' || substr(md5(public.requesting_user_id()), 1, 6);
+  base  text := left(regexp_replace(lower(nm), '[^a-z0-9]', '', 'g'), 17);
+  uname text;
+  n     int := 1;
+  me    public.authors;
 begin
   if uid is null then
     raise exception 'not signed in' using errcode = '28000';
   end if;
-  slug := coalesce(nullif(base, ''), 'reader') || '-' || substr(md5(uid), 1, 6);
+  select * into me from public.authors where user_id = uid;
+  if found then
+    return me;
+  end if;
+  -- A clean username (this is also the author's website address): "janedoe", then "janedoe2", "janedoe3"...
+  if length(base) < 3 then base := 'reader'; end if;
+  uname := base;
+  while exists (select 1 from public.authors a where lower(a.username) = uname) loop
+    n := n + 1;
+    uname := left(base, 20 - length(n::text)) || n::text;
+  end loop;
   insert into public.authors (id, user_id, name, username)
-  values (slug, uid, left(nm, 80), replace(slug, '-', ''))
+  values (slug, uid, left(nm, 80), uname)
   on conflict (user_id) do nothing;
   select * into me from public.authors where user_id = uid;
   return me;

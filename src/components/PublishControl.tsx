@@ -5,7 +5,7 @@ import ConfirmModal from "./ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "../context/AuthModalContext";
 import { useProfile } from "../context/ProfileContext";
-import { getMyPublishedSite, publishSite, subdomainFor, unpublishSite } from "../data/remote";
+import { getMyPublishedSite, isReservedSubdomain, publishSite, subdomainFor, unpublishSite } from "../data/remote";
 import { findTemplate, type SiteDoc } from "../data/templates";
 import { ROOT_DOMAIN, siteHost, siteUrl } from "../lib/host";
 import { isSupabaseConfigured } from "../lib/supabase";
@@ -48,7 +48,7 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
   const navigate = useNavigate();
   const { signedIn, loading: authLoading } = useAuth();
   const { open: openSignIn } = useAuthModal();
-  const { profile, authorId } = useProfile();
+  const { profile, authorId, update } = useProfile();
 
   const [open, setOpen] = useState(false);
   const [published, setPublished] = useState<Published | null>(null);
@@ -58,6 +58,10 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmUnpublish, setConfirmUnpublish] = useState(false);
+  const [editingAddr, setEditingAddr] = useState(false);
+  const [addrDraft, setAddrDraft] = useState("");
+  const [addrError, setAddrError] = useState<string | null>(null);
+  const [addrSaving, setAddrSaving] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const configured = Boolean(ROOT_DOMAIN);
@@ -127,6 +131,65 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
       setBusy(null);
     }
   };
+
+  const startEditAddr = () => {
+    setAddrDraft(username.toLowerCase());
+    setAddrError(null);
+    setEditingAddr(true);
+  };
+
+  const saveAddr = async () => {
+    const next = addrDraft.trim();
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(next)) return setAddrError("Use 3 to 20 letters, numbers or underscores.");
+    if (isReservedSubdomain(subdomainFor(next))) return setAddrError("That name is reserved. Try another.");
+    if (next === username) return setEditingAddr(false);
+    setAddrSaving(true);
+    setAddrError(null);
+    const err = await update({ username: next });
+    setAddrSaving(false);
+    if (err) return setAddrError(err);
+    setEditingAddr(false);
+    setNotice(published ? "Address changed. Press Update site to move your live site to it." : "Address changed.");
+  };
+
+  /** The address line with a small "Change" control that swaps it for an input. */
+  const addressEditor = (
+    <div className="mt-2">
+      {editingAddr ? (
+        <div>
+          <div className="flex items-center rounded-lg border border-line bg-bg focus-within:border-brand">
+            <input
+              value={addrDraft}
+              onChange={(e) => {
+                setAddrDraft(e.target.value.replace(/\s/g, ""));
+                setAddrError(null);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && saveAddr()}
+              maxLength={20}
+              autoCapitalize="none"
+              autoFocus
+              aria-label="Site address"
+              className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm focus:outline-none"
+            />
+            <span className="pr-2.5 font-mono text-xs text-muted">.{ROOT_DOMAIN}</span>
+          </div>
+          {addrError && <p role="alert" className="mt-1 text-xs text-error">{addrError}</p>}
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={saveAddr} disabled={addrSaving} className={`${primaryBtn} flex-1`}>
+              {addrSaving ? <Loader2 size={14} className="animate-spin" /> : null} Save address
+            </button>
+            <button type="button" onClick={() => setEditingAddr(false)} disabled={addrSaving} className={secondaryBtn}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={startEditAddr} className="text-xs font-medium text-brand hover:underline">
+          Change address
+        </button>
+      )}
+    </div>
+  );
 
   const unpublish = async () => {
     setConfirmUnpublish(false);
@@ -226,6 +289,7 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
             <div>
               <p className="text-xs text-muted">Your site will be live at</p>
               <p className="mt-0.5 break-all font-mono text-sm font-semibold">{siteHost(mySubdomain)}</p>
+              {addressEditor}
               <button type="button" onClick={publish} disabled={busy !== null} className={`${primaryBtn} mt-3 w-full`}>
                 {busy === "publish" ? <Loader2 size={14} className="animate-spin" /> : null}
                 {busy === "publish" ? "Publishing…" : "Publish"}
@@ -236,6 +300,7 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
               <p className="text-xs text-muted">{isThisTemplate ? "Your site is live at" : `Your live site uses ${otherName}, at`}</p>
               <p className="mt-0.5 break-all font-mono text-sm font-semibold">{siteHost(published.subdomain)}</p>
               {moving && <p className="mt-1 text-xs text-muted">Updating will move it to {siteHost(mySubdomain)}, to match your username.</p>}
+              {addressEditor}
               {!isThisTemplate ? (
                 <p className="mt-2 text-xs text-muted">Publishing this template replaces your live site.</p>
               ) : (

@@ -4,6 +4,7 @@ import { Check, ChevronDown, ChevronUp, Eye, Monitor, Pencil, RotateCcw, Sliders
 import TemplateBlock from "../components/TemplateBlock";
 import ConfirmModal from "../components/ConfirmModal";
 import PublishControl from "../components/PublishControl";
+import LegalPage, { siteIdentity } from "../components/SiteLegal";
 import { useAuth } from "../context/AuthContext";
 import { deleteSiteDoc, loadSiteDoc, saveSiteDoc } from "../data/remote";
 import { NETWORKS } from "../components/SocialIcons";
@@ -14,10 +15,12 @@ import {
   ctxFor,
   findTemplate,
   newBlock,
+  parseLegalHref,
   resolveTarget,
   type Block,
   type BlockType,
   type HeroLayout,
+  type LegalKind,
   type SiteDoc,
   type Theme,
 } from "../data/templates";
@@ -85,6 +88,7 @@ export default function TemplateEditor() {
   const [device, setDevice] = useState<(typeof DEVICES)[number]["value"]>("desktop");
   const [panelOpen, setPanelOpen] = useState(true);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [legal, setLegal] = useState<LegalKind | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { signedIn, loading: authLoading } = useAuth();
   // Signed-in authors keep their site in Supabase. Saving waits until the saved copy has been checked.
@@ -140,6 +144,14 @@ export default function TemplateEditor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [navigate]);
 
+  // Esc closes the legal page preview.
+  useEffect(() => {
+    if (!legal) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setLegal(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [legal]);
+
   if (!template || !doc) {
     return (
       <div className="py-20 text-center">
@@ -186,7 +198,9 @@ export default function TemplateEditor() {
     setTimeout(() => document.getElementById(`social-${network}`)?.focus(), 50);
   };
 
-  const goto = (label: string) => {
+  const goto = (label: string, link?: string) => {
+    const page = parseLegalHref(link);
+    if (page) return setLegal(page);
     const target = label === "__top" ? doc.blocks[0]?.id : resolveTarget(label, doc.blocks);
     const el = target ? document.getElementById(`blk-${target}`) : null;
     if (label === "__top") canvasRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -286,6 +300,17 @@ export default function TemplateEditor() {
             ))}
           </div>
         </div>
+
+        {legal && (
+          <div data-modal className="absolute inset-0 z-20 overflow-y-auto" style={{ backgroundColor: theme.bg, color: theme.ink, fontFamily: siteFont(theme.font) }}>
+            <div className="@container">
+              <p className="flex items-center justify-center gap-1.5 bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
+                <Eye size={12} /> Preview of the page your visitors will see
+              </p>
+              <LegalPage kind={legal} theme={theme} {...siteIdentity(doc.blocks, "Your name")} onBack={() => setLegal(null)} />
+            </div>
+          </div>
+        )}
 
         {/* Side panel */}
         {panelOpen && (

@@ -67,3 +67,13 @@ describe("sanitizeLink", () => {
     }
   });
 });
+
+describe("suggestUsername", () => {
+  it("makes a clean address from a display name", async () => {
+    const { suggestUsername } = await import("../lib/host");
+    expect(suggestUsername("Jane O'Brien")).toBe("janeobrien");
+    expect(suggestUsername("José Álvarez")).toBe("josealvarez");
+    expect(suggestUsername("Al")).toBe("");
+    expect(suggestUsername("A Very Long Author Name Indeed")).toBe("averylongauthornamei");
+  });
+});
