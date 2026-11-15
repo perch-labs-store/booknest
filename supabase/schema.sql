@@ -1,5 +1,5 @@
 -- =============================================================================
--- BookNest — Supabase schema, security (RLS), storage and seed data
+-- Fablebook — Supabase schema, security (RLS), storage and seed data
 -- =============================================================================
 -- HOW TO RUN: Supabase Dashboard -> SQL Editor -> New query -> paste -> Run.
 -- Safe to run more than once (everything is idempotent).
@@ -104,7 +104,7 @@ create table if not exists public.book_genres (
   primary key (book_id, genre_slug)
 );
 
--- Where a book can be bought elsewhere (BookNest only lists books).
+-- Where a book can be bought elsewhere (Fablebook only lists books).
 create table if not exists public.book_links (
   id      bigint generated always as identity primary key,
   book_id bigint not null references public.books (id) on delete cascade,
@@ -194,7 +194,7 @@ create table if not exists public.published_sites (
 -- Names nobody may claim (kept as a separate constraint so the list can be changed by re-running this file).
 alter table public.published_sites drop constraint if exists published_sites_not_reserved;
 alter table public.published_sites add  constraint published_sites_not_reserved
-  check (subdomain <> all (array['www', 'app', 'api', 'admin', 'mail', 'ftp', 'blog', 'help', 'support', 'static', 'assets', 'cdn', 'dev', 'test', 'staging', 'status', 'docs', 'login', 'auth', 'dashboard', 'billing', 'ns1', 'ns2', 'smtp', 'imap', 'pop', 'booknest']));
+  check (subdomain <> all (array['www', 'app', 'api', 'admin', 'mail', 'ftp', 'blog', 'help', 'support', 'static', 'assets', 'cdn', 'dev', 'test', 'staging', 'status', 'docs', 'login', 'auth', 'dashboard', 'billing', 'ns1', 'ns2', 'smtp', 'imap', 'pop', 'fablebook']));
 
 -- Genres page: genres with a live count of published books.
 create or replace view public.genres_with_counts with (security_invoker = true) as

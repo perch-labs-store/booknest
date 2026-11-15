@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sanitizeLink } from "../lib/safeLink";
 
-const RESERVED = ["www", "app", "api", "admin", "mail", "ftp", "blog", "help", "support", "static", "assets", "cdn", "dev", "test", "staging", "status", "docs", "login", "auth", "dashboard", "billing", "ns1", "ns2", "smtp", "imap", "pop", "booknest"];
+const RESERVED = ["www", "app", "api", "admin", "mail", "ftp", "blog", "help", "support", "static", "assets", "cdn", "dev", "test", "staging", "status", "docs", "login", "auth", "dashboard", "billing", "ns1", "ns2", "smtp", "imap", "pop", "fablebook"];
 
 describe("subdomainFor / isReservedSubdomain", () => {
   it("derives the address from a username", async () => {

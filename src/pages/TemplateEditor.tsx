@@ -22,7 +22,7 @@ import {
   type Theme,
 } from "../data/templates";
 
-const storageKey = (id: string) => `booknest.template.v3.${id}`;
+const storageKey = (id: string) => `fablebook.template.v3.${id}`;
 
 function load(id: string): SiteDoc | null {
   try {
@@ -117,7 +117,7 @@ export default function TemplateEditor() {
       if (signedIn && remoteReady) {
         saveSiteDoc(template.id, doc)
           .then(() => setSaved(true))
-          .catch((e) => console.error("[BookNest] Could not save your site:", e));
+          .catch((e) => console.error("[Fablebook] Could not save your site:", e));
       } else {
         setSaved(true);
       }

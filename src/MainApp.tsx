@@ -7,7 +7,7 @@ import { ProfileProvider } from "./context/ProfileContext";
 import { AuthModalProvider } from "./context/AuthModalContext";
 import { AuthProvider } from "./context/AuthContext";
 
-/** The normal BookNest app with all its providers. Loaded by main.tsx unless the visit is to an author's published site. */
+/** The normal Fablebook app with all its providers. Loaded by main.tsx unless the visit is to an author's published site. */
 export default function MainApp() {
   return (
     <ThemeProvider>

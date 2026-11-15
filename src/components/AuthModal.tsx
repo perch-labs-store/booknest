@@ -172,8 +172,8 @@ export default function AuthModal({ initialMode = "signin", onClose }: Props) {
 
   if (done) {
     const msg = {
-      signin: ["Welcome back!", "You're signed in to BookNest."],
-      signup: ["Account created!", "Welcome to BookNest."],
+      signin: ["Welcome back!", "You're signed in to Fablebook."],
+      signup: ["Account created!", "Welcome to Fablebook."],
       reset: ["Password updated", "You're signed in with your new password."],
     }[done];
     return shell(
@@ -192,7 +192,7 @@ export default function AuthModal({ initialMode = "signin", onClose }: Props) {
 
   const titles: Record<Mode, [string, string]> = {
     signin: ["Welcome back", "Sign in to continue exploring books."],
-    signup: ["Join BookNest", "Create an account to save, share and follow."],
+    signup: ["Join Fablebook", "Create an account to save, share and follow."],
     reset: ["Reset password", "Enter your email and we'll send you a reset code."],
   };
 
@@ -276,7 +276,7 @@ export default function AuthModal({ initialMode = "signin", onClose }: Props) {
         ) : mode === "reset" ? (
           <button onClick={() => switchMode("signin")} className="text-accent hover:underline">Back to sign in</button>
         ) : mode === "signin" ? (
-          <>New to BookNest? <button onClick={() => switchMode("signup")} className="font-medium text-accent hover:underline">Create an account</button></>
+          <>New to Fablebook? <button onClick={() => switchMode("signup")} className="font-medium text-accent hover:underline">Create an account</button></>
         ) : (
           <>Already have an account? <button onClick={() => switchMode("signin")} className="font-medium text-accent hover:underline">Sign in</button></>
         )}

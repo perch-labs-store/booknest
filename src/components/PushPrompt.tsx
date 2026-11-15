@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../context/ProfileContext";
 import { enablePush, getPushState, syncPushSubscription, type PushState } from "../lib/push";
 
-const DISMISSED_KEY = "booknest:push-dismissed";
+const DISMISSED_KEY = "fablebook:push-dismissed";
 const ASK_AGAIN_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 
 const recentlyDismissed = () => {

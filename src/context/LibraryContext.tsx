@@ -54,7 +54,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setBookFlag(kind, bookId, on)
         .then(() => refreshBookStats(bookId)) // refresh just this book's like / save counts
         .catch((e) => {
-          console.error("[BookNest] Could not save:", e);
+          console.error("[Fablebook] Could not save:", e);
           apply(!on);
         });
     },

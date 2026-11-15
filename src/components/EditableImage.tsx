@@ -11,7 +11,7 @@ import { prepareImage, UPLOAD_TYPES } from "../utils/image";
 const MAX_BYTES = 15 * 1024 * 1024; // before shrinking; the stored copy is much smaller
 
 /** The last few pictures this person uploaded, so they can reuse one without uploading it again. */
-const recentsKey = () => `booknest:site-uploads:${currentUserId() ?? "anon"}`;
+const recentsKey = () => `fablebook:site-uploads:${currentUserId() ?? "anon"}`;
 const loadRecents = (): string[] => {
   try {
     const list = JSON.parse(localStorage.getItem(recentsKey()) ?? "[]");

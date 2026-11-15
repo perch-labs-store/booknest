@@ -45,7 +45,7 @@ const messageOf = (e: unknown) => {
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (!PUBLISHABLE_KEY) {
-    console.warn("[BookNest] VITE_CLERK_PUBLISHABLE_KEY is missing, so sign-in runs in demo mode. See .env.example.");
+    console.warn("[Fablebook] VITE_CLERK_PUBLISHABLE_KEY is missing, so sign-in runs in demo mode. See .env.example.");
     return <DemoAuthProvider>{children}</DemoAuthProvider>;
   }
   return (
@@ -73,7 +73,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
       },
     });
     if (error) return fail(messageOf(error));
-    if (blockedByTask) return fail("Your account needs an extra setup step that BookNest doesn't support yet.");
+    if (blockedByTask) return fail("Your account needs an extra setup step that Fablebook doesn't support yet.");
     return DONE;
   }, []);
 
@@ -87,7 +87,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
       // New device ("client trust") or MFA: Clerk wants an emailed code on top of the password.
       if (signIn.status === "needs_client_trust" || signIn.status === "needs_second_factor") {
         if (!signIn.supportedSecondFactors.some((f) => f.strategy === "email_code")) {
-          return fail("This account uses a verification method BookNest doesn't support yet.");
+          return fail("This account uses a verification method Fablebook doesn't support yet.");
         }
         const sent = await signIn.mfa.sendEmailCode();
         if (sent.error) return fail(messageOf(sent.error));
@@ -113,7 +113,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
         pending.current = "signup";
         return CODE;
       }
-      return fail("Sign-up needs more details than BookNest collects. Check the required fields in your Clerk dashboard.");
+      return fail("Sign-up needs more details than Fablebook collects. Check the required fields in your Clerk dashboard.");
     },
     [isLoaded, signUp, finish]
   );

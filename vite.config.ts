@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => {
       includeAssets: ["favicon.svg", "icons/apple-touch-icon.png"],
       manifest: {
         id: "/",
-        name: "BookNest",
-        short_name: "BookNest",
+        name: "Fablebook",
+        short_name: "Fablebook",
         description: "Discover books, genres and authors, and follow the ones you love.",
         lang: "en",
         start_url: "/",

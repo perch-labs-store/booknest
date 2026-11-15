@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   const payload = JSON.stringify({
     title: record.title,
     body: record.detail ?? "",
-    tag: `booknest-${record.type}`,
+    tag: `fablebook-${record.type}`,
     url: "/notifications",
   });
 

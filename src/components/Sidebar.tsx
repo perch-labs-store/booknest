@@ -50,7 +50,7 @@ const user: NavItem[] = [
 ];
 const information: NavItem[] = [
   { to: "/contact", label: "Contact Us", icon: Headset },
-  { to: "/about", label: "About BookNest", icon: Info },
+  { to: "/about", label: "About Fablebook", icon: Info },
   { to: "/privacy", label: "Privacy Policy", icon: ShieldCheck },
   { to: "/terms", label: "Terms of Service", icon: ScrollText },
 ];
@@ -104,7 +104,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggleCollapse, onClo
       <div className={`mb-4 flex items-center justify-between px-2 ${collapsed ? "lg:flex-col lg:gap-3 lg:px-0" : ""}`}>
         <Link to="/" onClick={onCloseMobile} className="flex items-center gap-2 text-ink">
           <BookOpen size={28} className="shrink-0 text-accent" strokeWidth={1.8} />
-          <span className={`font-serif text-2xl font-bold ${collapsed ? "lg:hidden" : ""}`}>BookNest</span>
+          <span className={`font-serif text-2xl font-bold ${collapsed ? "lg:hidden" : ""}`}>Fablebook</span>
         </Link>
         <button
           onClick={onToggleCollapse}

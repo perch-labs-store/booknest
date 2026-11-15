@@ -1,4 +1,4 @@
-// Generates PWA icons from the BookNest logo (lucide "book-open" in brand gold).
+// Generates PWA icons from the Fablebook logo (lucide "book-open" in brand gold).
 // Run with: npm run icons
 import sharp from "sharp";
 import { mkdir } from "node:fs/promises";

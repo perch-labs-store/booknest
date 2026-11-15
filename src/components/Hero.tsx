@@ -143,7 +143,7 @@ export default function Hero() {
     return (
       <section className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-orange-500/25 via-rose-800/25 to-indigo-950/40 p-6 sm:p-10">
         <div className="max-w-lg">
-          <h1 className="font-serif text-3xl font-bold leading-tight text-ink sm:text-4xl">Welcome to BookNest</h1>
+          <h1 className="font-serif text-3xl font-bold leading-tight text-ink sm:text-4xl">Welcome to Fablebook</h1>
           <p className="mt-3 text-sm text-muted sm:text-base">
             A home for authors and book lovers. No books have been listed yet. Be the first to add yours.
           </p>

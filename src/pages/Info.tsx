@@ -75,13 +75,13 @@ const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   // { icon: BadgeCheck, title: "Verified authors", text: "Authors can ask for the blue tick so readers know they're on the real page." },
   { icon: LayoutTemplate, title: "Author website templates", text: "Pick a template and build a simple author website without writing any code." },
   { icon: Bell, title: "Live notifications", text: "Optional notifications for likes, new followers and updates from the authors you follow." },
-  { icon: Smartphone, title: "Install it like an app", text: "BookNest works in your browser and can be added to your home screen, no app store needed." },
+  { icon: Smartphone, title: "Install it like an app", text: "Fablebook works in your browser and can be added to your home screen, no app store needed." },
 ];
 
 export function About() {
   return (
     <Doc wide title={`About ${APP}`} subtitle="A free place for authors to list their books and for readers to find their next favorite.">
-      <Section title="Why BookNest exists">
+      <Section title="Why Fablebook exists">
         <p>
           There are millions of books and not enough good places to discover them, especially from independent and self-published authors.
           Big stores bury small authors in search results, and authors end up juggling a website, a profile on every store and a pile of links.
@@ -97,7 +97,7 @@ export function About() {
           {[
             ["1", "Authors list a book", "Add a cover, description, genre and links to wherever it's sold: Amazon, another store, printed, eBook or audiobook."],
             ["2", "Readers discover it", "People browse genres and new releases, search, read reviews and follow authors they like."],
-            ["3", "Readers buy from the author's store", "Tap Buy and you're taken to the store the author picked. The purchase happens there, not on BookNest."],
+            ["3", "Readers buy from the author's store", "Tap Buy and you're taken to the store the author picked. The purchase happens there, not on Fablebook."],
           ].map(([n, t, d]) => (
             <div key={n} className="rounded-2xl border border-line bg-surface p-4">
               <span className="grid h-7 w-7 place-items-center rounded-full bg-brand/25 text-xs font-bold text-ink">{n}</span>
@@ -289,7 +289,7 @@ export function Privacy() {
             "To provide features such as following, likes, saves, reviews and notifications.",
             "To send service messages, like sign-in verification codes and, if you opt in, push notifications.",
             "To review verification requests and keep the community safe (preventing spam, fraud and abuse).",
-            "To fix bugs and improve BookNest.",
+            "To fix bugs and improve Fablebook.",
             "To meet legal obligations and to protect our rights.",
           ]}
         />
@@ -412,7 +412,7 @@ export function Terms() {
         </p>
       </Section>
 
-      <Section title="2. What BookNest is, and isn't">
+      <Section title="2. What Fablebook is, and isn't">
         <p>
           {APP} is a free directory where authors list books and readers discover them. We <B>don't sell, host, publish, print or deliver books</B>, we don't process
           payments, and we're <B>not a party to any purchase</B> you make. When you tap Buy, you leave {APP} for a store run by someone else. Prices, availability, delivery,
@@ -495,7 +495,7 @@ export function Terms() {
           items={[
             "your name and contact details,",
             "a description of the work you own,",
-            "the link(s) to the content on BookNest you want reviewed,",
+            "the link(s) to the content on Fablebook you want reviewed,",
             "a statement that you believe in good faith the use isn't authorized, and that your notice is accurate,",
             "a statement that you're the owner or authorized to act for the owner, and your signature (typing your full name is fine).",
           ]}

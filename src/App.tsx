@@ -47,7 +47,7 @@ const comingSoonPages: { path: string; title: string }[] = [
 export default function App() {
   return (
     <Routes>
-      {/* Outside the Layout: a published site has none of the BookNest chrome. */}
+      {/* Outside the Layout: a published site has none of the Fablebook chrome. */}
       <Route path="s/:subdomain" element={<SiteByPath />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />

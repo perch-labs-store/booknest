@@ -20,7 +20,7 @@ export default function Layout() {
   // On the Home page the most-liked books arrive first and the rest of the catalog follows in the background.
   const settled = useRef(false);
   useEffect(() => {
-    loadRemote({ quick: pathname === "/" }).catch((e) => console.error("[BookNest] Could not load data:", e));
+    loadRemote({ quick: pathname === "/" }).catch((e) => console.error("[Fablebook] Could not load data:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -31,7 +31,7 @@ export default function Layout() {
       settled.current = true;
       if (!signedIn) return; // signed-out visitors already have everything they can see
     }
-    loadRemote().catch((e) => console.error("[BookNest] Could not load data:", e));
+    loadRemote().catch((e) => console.error("[Fablebook] Could not load data:", e));
   }, [signedIn, loading]);
 
   // <main> is the scroll container, so reset it when navigating to a new page.

@@ -1,6 +1,6 @@
-/** Who runs BookNest. Used by the About, Contact, Privacy and Terms pages, so change it here once. */
+/** Who runs Fablebook. Used by the About, Contact, Privacy and Terms pages, so change it here once. */
 export const COMPANY = {
-  product: "BookNest",
+  product: "Fablebook",
   name: "Perch Labs",
   email: "PERCHLABS20@gmail.com",
   /** Laws that govern the Terms of Service. Change to wherever you live / operate. */

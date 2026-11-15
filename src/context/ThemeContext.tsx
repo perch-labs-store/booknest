@@ -8,7 +8,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
-const STORAGE_KEY = "booknest-theme";
+const STORAGE_KEY = "fablebook-theme";
 
 function getInitialTheme(): Theme {
   try {

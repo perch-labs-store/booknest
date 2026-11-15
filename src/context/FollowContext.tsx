@@ -39,7 +39,7 @@ export function FollowProvider({ children }: { children: ReactNode }) {
         });
       apply(nowFollowing); // instant feedback...
       setFollow(id, nowFollowing).catch((e) => {
-        console.error("[BookNest] Could not save follow:", e);
+        console.error("[Fablebook] Could not save follow:", e);
         apply(!nowFollowing); // ...undone if it did not save
       });
     },

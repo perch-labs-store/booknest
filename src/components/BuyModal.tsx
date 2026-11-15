@@ -77,7 +77,7 @@ export default function BuyModal({ title, links, discount, onClose }: Props) {
           })}
         </ul>
 
-        <p className="mt-4 text-xs text-muted">You'll leave BookNest. Prices and availability are set by each store.</p>
+        <p className="mt-4 text-xs text-muted">You'll leave Fablebook. Prices and availability are set by each store.</p>
       </div>
     </div>
   );

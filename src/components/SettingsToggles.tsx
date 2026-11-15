@@ -25,7 +25,7 @@ const PUSH_HINT: Record<PushState, string> = {
   on: "This device gets a notification when something happens.",
   off: "Get a notification on this device for likes, follows and posts.",
   blocked: "Blocked in your browser. Allow notifications for this site in its settings, then come back.",
-  "needs-install": "On iPhone and iPad, first add BookNest to your Home Screen (Share → Add to Home Screen), then open it from there.",
+  "needs-install": "On iPhone and iPad, first add Fablebook to your Home Screen (Share → Add to Home Screen), then open it from there.",
   unsupported: "This browser doesn't support push notifications.",
 };
 

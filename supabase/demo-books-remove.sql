@@ -1,5 +1,5 @@
 -- =====================================================================================
--- REMOVE THE BOOKNEST DEMO DATA
+-- REMOVE THE FABLEBOOK DEMO DATA
 -- Deletes only the demo authors (ids starting with 'demo-'). Their books, genres, buy links,
 -- likes, saves and reviews are removed automatically with them. Real users are not touched.
 -- Run once in Supabase -> SQL Editor.

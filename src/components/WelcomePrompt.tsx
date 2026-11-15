@@ -46,7 +46,7 @@ export default function WelcomePrompt() {
       <div role="dialog" aria-modal="true" aria-labelledby={`${uid}-t`} className="max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-2xl sm:rounded-2xl sm:p-6">
         <div className="mb-5 flex flex-col items-center text-center">
           <BookOpen size={30} strokeWidth={1.8} className="mb-2 text-accent" />
-          <h2 id={`${uid}-t`} className="font-serif text-2xl font-bold text-ink">Welcome to BookNest</h2>
+          <h2 id={`${uid}-t`} className="font-serif text-2xl font-bold text-ink">Welcome to Fablebook</h2>
           <p className="mt-1 text-sm text-muted">Tell readers who you are. You can change this any time in Edit Profile.</p>
         </div>
 

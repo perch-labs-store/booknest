@@ -1,5 +1,5 @@
 -- =====================================================================================
--- BOOKNEST DEMO DATA  (fictional authors + books, for showing the site before real users)
+-- FABLEBOOK DEMO DATA  (fictional authors + books, for showing the site before real users)
 --
 -- ADD:     run this whole file in Supabase -> SQL Editor. Safe to run again (it resets the demo rows first).
 -- NEEDS:  the latest supabase/schema.sql run first (it adds the long_description column this file fills in).

@@ -1,5 +1,5 @@
 -- =============================================================================
--- BookNest: publish a template website at <username>.<your domain>
+-- Fablebook: publish a template website at <username>.<your domain>
 -- Run once in the Supabase SQL Editor. Safe to run again (idempotent).
 -- Needs supabase/schema.sql to have been run first (it uses public.authors and
 -- public.requesting_user_id()). The same objects are also part of supabase/schema.sql.
@@ -22,7 +22,7 @@ create table if not exists public.published_sites (
 -- Names nobody may claim (kept as a separate constraint so the list can be changed by re-running this file).
 alter table public.published_sites drop constraint if exists published_sites_not_reserved;
 alter table public.published_sites add  constraint published_sites_not_reserved
-  check (subdomain <> all (array['www', 'app', 'api', 'admin', 'mail', 'ftp', 'blog', 'help', 'support', 'static', 'assets', 'cdn', 'dev', 'test', 'staging', 'status', 'docs', 'login', 'auth', 'dashboard', 'billing', 'ns1', 'ns2', 'smtp', 'imap', 'pop', 'booknest']));
+  check (subdomain <> all (array['www', 'app', 'api', 'admin', 'mail', 'ftp', 'blog', 'help', 'support', 'static', 'assets', 'cdn', 'dev', 'test', 'staging', 'status', 'docs', 'login', 'auth', 'dashboard', 'billing', 'ns1', 'ns2', 'smtp', 'imap', 'pop', 'fablebook']));
 
 -- Published sites: the address must be the owner's own username (lowercase, underscores -> hyphens,
 -- hyphens trimmed from both ends), so nobody can claim a name that belongs to someone else.

@@ -32,7 +32,7 @@ export default function Notifications() {
     };
   }, [signedIn, loading]);
 
-  const log = (e: unknown) => console.error("[BookNest] Could not save notification change:", e);
+  const log = (e: unknown) => console.error("[Fablebook] Could not save notification change:", e);
   const [tab, setTab] = useState<Tab>("All");
   const [followed, setFollowed] = useState<Set<number>>(new Set());
 

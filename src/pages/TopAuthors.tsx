@@ -37,7 +37,7 @@ export default function TopAuthors() {
 
   return (
     <>
-      <PageHeader title="Top Authors" subtitle="Discover the most popular and rising authors on BookNest.">
+      <PageHeader title="Top Authors" subtitle="Discover the most popular and rising authors on Fablebook.">
         <SearchField value={query} onChange={setQuery} placeholder="Search authors..." className="w-full sm:w-72" />
       </PageHeader>
 

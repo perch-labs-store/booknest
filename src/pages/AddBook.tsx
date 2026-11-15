@@ -243,7 +243,7 @@ export default function AddBook() {
           <h2 className="font-serif text-2xl font-bold text-ink">{editId ? "Changes saved" : done === "published" ? "Book published!" : "Draft saved"}</h2>
           <p className="mt-2 text-sm text-muted">
             <span className="font-medium text-ink">{form.title}</span>{" "}
-            {editId ? "was updated." : done === "published" ? "is now listed on BookNest." : "was saved. You can finish and publish it later."}
+            {editId ? "was updated." : done === "published" ? "is now listed on Fablebook." : "was saved. You can finish and publish it later."}
           </p>
           <div className="mt-6 flex gap-3">
             {!editId && (
@@ -379,7 +379,7 @@ export default function AddBook() {
         <div className="mt-6 rounded-xl border border-line p-4">
           <h2 className="text-sm font-semibold text-ink">Where can people buy your book?</h2>
           <p className="mt-0.5 text-xs text-muted">
-            BookNest only lists books. Add a link for each version you sell: printed copy, eBook or audiobook, on Amazon or any other store.
+            Fablebook only lists books. Add a link for each version you sell: printed copy, eBook or audiobook, on Amazon or any other store.
             Readers see these when they tap Buy.
           </p>
           {errors.links && <p role="alert" className="mt-2 text-xs text-error">{errors.links}</p>}

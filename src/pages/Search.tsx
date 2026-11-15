@@ -83,7 +83,7 @@ export default function Search() {
 
   return (
     <>
-      <PageHeader title="Search" subtitle="Find books, authors and genres across BookNest." />
+      <PageHeader title="Search" subtitle="Find books, authors and genres across Fablebook." />
 
       <SearchField value={query} onChange={setQuery} placeholder="Search books, authors, genres…" className="mb-4 !h-12 rounded-full" />
 

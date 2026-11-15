@@ -1,4 +1,4 @@
-/** An external place where a book can be bought (BookNest only lists books: nothing is sold or read here). */
+/** An external place where a book can be bought (Fablebook only lists books: nothing is sold or read here). */
 export type LinkFormat = "printed" | "ebook" | "audiobook";
 export type LinkStore = "amazon" | "other";
 

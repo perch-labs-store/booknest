@@ -327,7 +327,7 @@ export default function BookDetails() {
                 <Reviews bookId={book.id} />
               </div>
             ) : (
-              <Empty title="No reviews yet" text="Reviews open once this book is saved on BookNest." />
+              <Empty title="No reviews yet" text="Reviews open once this book is saved on Fablebook." />
             ))}
 
           {tab === "Similar Books" &&

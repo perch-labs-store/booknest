@@ -86,7 +86,7 @@ const BOOK_COLS =
   "id, title, cover_url, description, formats, status, release_date, discount_percent, discount_ends_on, discount_code, likes_count, saves_count, rating_avg, rating_count, created_at, author:authors!author_id(id, name), book_genres(position, genres(name))";
 /** How many of the most-liked books the quick (Home) load fetches. Enough for Trending, Recommended and the Hero. */
 const QUICK_LIMIT = 40;
-const CACHE_KEY = "booknest:home:v1";
+const CACHE_KEY = "fablebook:home:v1";
 
 /** True once the app has books to show (from the saved copy, the quick load or the full load) or loading has failed. */
 let ready = !supabase;
@@ -185,7 +185,7 @@ async function loadQuick(seq: number): Promise<void> {
     .order("created_at", { ascending: false })
     .limit(QUICK_LIMIT);
   if (error || !data) {
-    console.error("[BookNest] Could not load top books:", error?.message);
+    console.error("[Fablebook] Could not load top books:", error?.message);
     return;
   }
   const rows = data as unknown as BookRow[];
@@ -208,7 +208,7 @@ async function loadQuick(seq: number): Promise<void> {
 export async function loadRemote(opts: { quick?: boolean } = {}): Promise<void> {
   if (!supabase) return;
   const seq = ++loadSeq;
-  if (opts.quick && !fullLoaded) await loadQuick(seq).catch((e) => console.error("[BookNest] Quick load failed:", e));
+  if (opts.quick && !fullLoaded) await loadQuick(seq).catch((e) => console.error("[Fablebook] Quick load failed:", e));
   if (seq !== loadSeq) return; // a newer load has started; let it finish
   const me = clerkUser()?.id;
 
@@ -220,7 +220,7 @@ export async function loadRemote(opts: { quick?: boolean } = {}): Promise<void> 
     supabase.from("authors").select("id, name, genres, bio, about, banner_url, photo_url, featured_book_id, languages, followers_count, books_count, rating_avg, rating_count, verified, growth_pct, created_at"),
   ]);
   if (booksRes.error) {
-    console.error("[BookNest] Could not load books:", booksRes.error.message);
+    console.error("[Fablebook] Could not load books:", booksRes.error.message);
     ready = true;
     notify();
     return;
@@ -490,7 +490,7 @@ export async function loadMyProfile(): Promise<MyProfile | null> {
   if (!supabase || !user) return null;
   const { data, error } = await supabase.rpc("ensure_my_author", { p_name: user.fullName ?? user.firstName ?? undefined });
   if (error || !data) {
-    console.error("[BookNest] Could not load your profile:", error?.message);
+    console.error("[Fablebook] Could not load your profile:", error?.message);
     return null;
   }
   const a = data as MyAuthorRow;
@@ -632,7 +632,7 @@ export async function loadMyFollows(): Promise<Set<string>> {
   if (!supabase || !user) return new Set();
   const { data, error } = await supabase.from("follows").select("author_id").eq("follower_id", user.id);
   if (error) {
-    console.error("[BookNest] Could not load follows:", error.message);
+    console.error("[Fablebook] Could not load follows:", error.message);
     return new Set();
   }
   return new Set((data ?? []).map((r: { author_id: string }) => r.author_id));
@@ -678,7 +678,7 @@ export async function loadNotifications(): Promise<AppNotification[]> {
   if (!supabase || !user) return [];
   const { data, error } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(100);
   if (error) {
-    console.error("[BookNest] Could not load notifications:", error.message);
+    console.error("[Fablebook] Could not load notifications:", error.message);
     return [];
   }
   return (data as NotificationRow[]).map((n) => ({
@@ -719,7 +719,7 @@ export async function loadSiteDoc<T>(templateId: string): Promise<T | null> {
   if (!supabase || !user) return null;
   const { data, error } = await supabase.from("site_docs").select("doc").eq("user_id", user.id).eq("template_id", templateId).maybeSingle();
   if (error) {
-    console.error("[BookNest] Could not load your site:", error.message);
+    console.error("[Fablebook] Could not load your site:", error.message);
     return null;
   }
   return (data?.doc as T | undefined) ?? null;
@@ -747,7 +747,7 @@ export async function deleteSiteDoc(templateId: string): Promise<void> {
 /** Names nobody may use as a site address. Keep in sync with supabase/publish-sites.sql. */
 const RESERVED_SUBDOMAINS: ReadonlySet<string> = new Set([
   "www", "app", "api", "admin", "mail", "ftp", "blog", "help", "support", "static", "assets", "cdn", "dev", "test",
-  "staging", "status", "docs", "login", "auth", "dashboard", "billing", "ns1", "ns2", "smtp", "imap", "pop", "booknest",
+  "staging", "status", "docs", "login", "auth", "dashboard", "billing", "ns1", "ns2", "smtp", "imap", "pop", "fablebook",
 ]);
 
 /** The site address for a username: lowercase, underscores become hyphens, no leading or trailing hyphens. */
@@ -910,7 +910,7 @@ export async function loadReviews(bookId: number): Promise<ReviewsResult> {
     .eq("book_id", bookId)
     .order("created_at", { ascending: false });
   if (error) {
-    console.error("[BookNest] Could not load reviews:", error.message);
+    console.error("[Fablebook] Could not load reviews:", error.message);
     return { reviews: [], isAuthor };
   }
   return { reviews: await hydrateReviews(data as ReviewRow[], me), isAuthor };
@@ -991,7 +991,7 @@ export async function loadPosts(authorId: string): Promise<AuthorPost[]> {
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) {
-    console.error("[BookNest] Could not load posts:", error.message);
+    console.error("[Fablebook] Could not load posts:", error.message);
     return [];
   }
   return (data as { id: number; body: string; created_at: string }[]).map((p) => ({ id: p.id, body: p.body, createdAt: p.created_at }));
@@ -1021,7 +1021,7 @@ export async function loadReviewsOnBooks(books: { id: number; title: string }[])
     .in("book_id", books.map((b) => b.id))
     .order("created_at", { ascending: false });
   if (error) {
-    console.error("[BookNest] Could not load reviews:", error.message);
+    console.error("[Fablebook] Could not load reviews:", error.message);
     return [];
   }
   const titles = new Map(books.map((b) => [b.id, b.title]));

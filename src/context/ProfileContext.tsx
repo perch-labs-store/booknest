@@ -83,7 +83,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     (patch: Partial<Prefs>) => {
       const next = { ...prefs, ...patch };
       setPrefs(next);
-      saveMyPrefs(next).catch((e) => console.error("[BookNest] Could not save settings:", messageOf(e)));
+      saveMyPrefs(next).catch((e) => console.error("[Fablebook] Could not save settings:", messageOf(e)));
     },
     [prefs],
   );

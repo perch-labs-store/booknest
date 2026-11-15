@@ -1,6 +1,6 @@
 /**
  * The one place that knows the site's domain. Never hardcode a domain anywhere else.
- * Set VITE_ROOT_DOMAIN (e.g. "booknest.app") in .env.local / your host's environment.
+ * Set VITE_ROOT_DOMAIN (e.g. "fablebook.store") in .env.local / your host's environment.
  */
 export const ROOT_DOMAIN: string = import.meta.env.VITE_ROOT_DOMAIN?.trim().toLowerCase() || "";
 
@@ -42,5 +42,5 @@ export function siteUrl(subdomain: string): string {
   return `https://${name}.${ROOT_DOMAIN}`;
 }
 
-/** Short display form of the address, e.g. "jane.booknest.app" (just "jane" when no root domain is set). */
+/** Short display form of the address, e.g. "jane.fablebook.store" (just "jane" when no root domain is set). */
 export const siteHost = (subdomain: string): string => (ROOT_DOMAIN ? `${subdomain.trim().toLowerCase()}.${ROOT_DOMAIN}` : subdomain);

@@ -20,7 +20,7 @@ Replace `yourdomain.com` below with your real domain.
 
 - [ ] Sign in, open Profile and set a username (3-20 letters, numbers or underscores).
 - [ ] Open a template, edit it, press **Publish**.
-- [ ] Open `username.yourdomain.com` (underscores in the username become hyphens). The site shows with no BookNest menu.
+- [ ] Open `username.yourdomain.com` (underscores in the username become hyphens). The site shows with no Fablebook menu.
 - [ ] Edit the site, press **Update site**. Reload the live site: the change appears within about 5 minutes (usually at once).
 - [ ] Add a link to a button (the small "Link" field in edit mode) and check it opens in a new tab.
 - [ ] Press **Unpublish**. The address now shows "This site isn't published yet".
@@ -49,7 +49,7 @@ Replace `yourdomain.com` below with your real domain.
 - **Username changed after publishing**: the old address stops working once the author presses Update site; the
   site moves to the new address.
 - **Reserved names**: www, app, api, admin, mail, ftp, blog, help, support, static, assets, cdn, dev, test,
-  staging, status, docs, login, auth, dashboard, billing, ns1, ns2, smtp, imap, pop, booknest cannot be used.
+  staging, status, docs, login, auth, dashboard, billing, ns1, ns2, smtp, imap, pop, fablebook cannot be used.
   The author must pick a different username.
 - **Changes not showing**: published pages are cached for at most 5 minutes. Hard-refresh, or close and reopen the
   installed app, because the service worker caches the app itself.

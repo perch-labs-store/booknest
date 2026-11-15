@@ -6,7 +6,7 @@ import { buildDoc, resolveTarget, TEMPLATES, type Block, type SiteDoc } from "..
 import { ROOT_DOMAIN } from "../lib/host";
 import { openLink, sanitizeLink } from "../lib/safeLink";
 
-/** The main BookNest site: https://<ROOT_DOMAIN>, or "/" when no root domain is configured. */
+/** The main Fablebook site: https://<ROOT_DOMAIN>, or "/" when no root domain is configured. */
 const MAIN_SITE = ROOT_DOMAIN ? `https://${ROOT_DOMAIN}` : "/";
 
 type State =
@@ -98,7 +98,7 @@ function Skeleton() {
   );
 }
 
-/** A published author website: just the author's page, none of the BookNest app. */
+/** A published author website: just the author's page, none of the Fablebook app. */
 export default function PublishedSite({ subdomain }: { subdomain: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -118,7 +118,7 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
         setState(site && doc ? { kind: "ready", doc, title: site.title, authorName: site.authorName } : { kind: "missing" });
       })
       .catch((e) => {
-        console.error("[BookNest] Could not load this site:", e);
+        console.error("[Fablebook] Could not load this site:", e);
         if (!cancelled) setState({ kind: "error" });
       });
     return () => {
@@ -131,7 +131,7 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
   // Tab title, description, social-share tags and colours that match the author's design.
   useEffect(() => {
     if (!ready) {
-      document.title = state.kind === "missing" ? "Site not published" : "BookNest";
+      document.title = state.kind === "missing" ? "Site not published" : "Fablebook";
       return;
     }
     const title = ready.title?.trim() || ready.authorName?.trim() || subdomain;
@@ -179,7 +179,7 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
     return (
       <Message title="This site isn't published yet" text="The address is right, but its author hasn't published a website here.">
         <a href={MAIN_SITE} className="mt-2 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black hover:opacity-90">
-          Go to BookNest
+          Go to Fablebook
         </a>
       </Message>
     );
@@ -203,7 +203,7 @@ export default function PublishedSite({ subdomain }: { subdomain: string }) {
         ))}
         <p className="px-6 py-5 text-center text-xs opacity-60">
           <a href={MAIN_SITE} className="underline-offset-4 hover:underline">
-            Made with BookNest
+            Made with Fablebook
           </a>
         </p>
       </div>

@@ -1,4 +1,4 @@
-/** A discount an author runs on their book. BookNest only displays it; it is applied wherever the book is sold. */
+/** A discount an author runs on their book. Fablebook only displays it; it is applied wherever the book is sold. */
 export interface Discount {
   /** Whole number, 1-99. */
   percent: number;
