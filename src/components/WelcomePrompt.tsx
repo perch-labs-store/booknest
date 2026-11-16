@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { BookOpen } from "lucide-react";
+import BrandMark from "./BrandMark";
 import { useProfile } from "../context/ProfileContext";
 import { ROOT_DOMAIN, suggestUsername } from "../lib/host";
 
@@ -49,7 +49,7 @@ export default function WelcomePrompt() {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
       <div role="dialog" aria-modal="true" aria-labelledby={`${uid}-t`} className="max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-2xl sm:rounded-2xl sm:p-6">
         <div className="mb-5 flex flex-col items-center text-center">
-          <BookOpen size={30} strokeWidth={1.8} className="mb-2 text-accent" />
+          <BrandMark size={48} className="mb-2" />
           <h2 id={`${uid}-t`} className="font-serif text-2xl font-bold text-ink">Welcome to Fablebook</h2>
           <p className="mt-1 text-sm text-muted">Tell readers who you are. You can change this any time in Edit Profile.</p>
         </div>

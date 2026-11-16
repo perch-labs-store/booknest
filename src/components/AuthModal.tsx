@@ -1,7 +1,8 @@
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, CheckCircle2, Eye, EyeOff, Lock, Mail, X } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Lock, Mail, X } from "lucide-react";
 import { useAuth, type AuthResult } from "../context/AuthContext";
+import BrandMark from "./BrandMark";
 
 export type AuthMode = "signin" | "signup" | "reset";
 type Mode = AuthMode;
@@ -206,7 +207,7 @@ export default function AuthModal({ initialMode = "signin", onClose }: Props) {
   return shell(
     <>
       <div className="mb-5 flex flex-col items-center pt-1 text-center">
-        <BookOpen size={30} strokeWidth={1.8} className="mb-2 text-accent" />
+        <BrandMark size={48} className="mb-2" />
         <h2 id={`${uid}-title`} className="font-serif text-2xl font-bold text-ink">{title}</h2>
         <p className="mt-1 text-sm text-muted">{subtitle}</p>
       </div>

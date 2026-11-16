@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Copy, ExternalLink, Globe, Loader2 } from "lucide-react";
+import { Check, Copy, ExternalLink, Globe, Loader2, LogIn } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "../context/AuthModalContext";
@@ -43,6 +43,8 @@ const messageOf = (e: unknown) => (e instanceof Error ? e.message : "Something w
 const primaryBtn = "inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
 const secondaryBtn = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm font-medium hover:bg-brand/10";
 
+const panelCls = "fixed inset-x-3 top-[4.25rem] z-30 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl border border-line bg-surface p-4 text-ink shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80";
+
 /** Publish button for the template editor's top bar, with a small panel for the live-site actions. */
 export default function PublishControl({ templateId, templateName, doc, ready }: Props) {
   const navigate = useNavigate();
@@ -63,6 +65,8 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
   const [addrError, setAddrError] = useState<string | null>(null);
   const [addrSaving, setAddrSaving] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Set when a signed-out visitor starts signing in from the panel, so the panel can reopen once they're in.
+  const cameToPublish = useRef(false);
 
   const configured = Boolean(ROOT_DOMAIN);
 
@@ -83,6 +87,13 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
       cancelled = true;
     };
   }, [signedIn, configured]);
+
+  useEffect(() => {
+    if (signedIn && cameToPublish.current) {
+      cameToPublish.current = false;
+      setOpen(true);
+    }
+  }, [signedIn]);
 
   // Close on outside click or Esc. The panel is marked data-modal so the editor's own Esc handler leaves it alone.
   useEffect(() => {
@@ -232,18 +243,46 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
   }
 
   if (!signedIn) {
+    // Explain why first, then let the visitor open the sign-in modal themselves.
+    const signIn = (mode: "signin" | "signup") => {
+      cameToPublish.current = true;
+      setOpen(false);
+      openSignIn(mode);
+    };
     return (
-      <button
-        type="button"
-        disabled={authLoading}
-        onClick={() => openSignIn("signin")}
-        aria-label="Publish (sign in first)"
-        title="Sign in to publish your site"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-line p-2 text-sm font-medium hover:bg-brand/10 disabled:opacity-50 sm:px-3"
-      >
-        <Globe size={18} />
-        <span className="hidden sm:inline">Publish</span>
-      </button>
+      <div ref={wrapRef} className="relative">
+        <button
+          type="button"
+          disabled={authLoading}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label="Publish (sign in first)"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-line p-2 text-sm font-medium hover:bg-brand/10 disabled:opacity-50 sm:px-3"
+        >
+          <Globe size={18} />
+          <span className="hidden sm:inline">Publish</span>
+        </button>
+
+        {open && (
+          <div data-modal role="dialog" aria-label="Sign in to publish" className={panelCls}>
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <LogIn size={16} className="text-brand" /> Sign in to publish
+            </p>
+            <p className="mt-1.5 text-sm text-muted">You need an account to put your site online. Your site gets its own address, like:</p>
+            <p className="mt-2 break-all rounded-lg bg-bg px-2.5 py-2 font-mono text-sm font-semibold">{siteHost("yourname")}</p>
+            <button type="button" onClick={() => signIn("signin")} className={`${primaryBtn} mt-3 w-full`}>
+              Sign in
+            </button>
+            <p className="mt-2 text-center text-xs text-muted">
+              New here?{" "}
+              <button type="button" onClick={() => signIn("signup")} className="font-medium text-brand hover:underline">
+                Create an account
+              </button>
+            </p>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -270,7 +309,7 @@ export default function PublishControl({ templateId, templateName, doc, ready }:
           data-modal
           role="dialog"
           aria-label="Publish your site"
-          className="fixed inset-x-3 top-[4.25rem] z-30 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl border border-line bg-surface p-4 text-ink shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
+          className={panelCls}
         >
           {!isSupabaseConfigured ? (
             <p className="text-sm text-muted">Publishing needs the database. Add your Supabase keys to .env.local and restart the app.</p>
