@@ -1,14 +1,15 @@
-// Clerk webhook: creates / removes the author row in Supabase when a user signs up or is deleted.
-// Clerk Dashboard -> Webhooks -> Endpoint URL: https://<your domain>/api/webhooks/clerk
-// Events: user.created, user.deleted.  Env vars (Vercel, NOT VITE_): CLERK_WEBHOOK_SECRET (whsec_…), SUPABASE_SERVICE_ROLE_KEY.
-// Run supabase/clerk-webhook.sql first.
-export const config = { runtime: "edge" };
-
+// Clerk webhook (user.created / user.deleted) -> creates or removes the author row in Supabase.
+// Endpoint URL in Clerk:  https://<your-domain>/api/webhooks/clerk
+// Vercel environment variables (Production), then redeploy:
+//   CLERK_WEBHOOK_SIGNING_SECRET   whsec_… from the Clerk endpoint page
+//   SUPABASE_SERVICE_ROLE_KEY      Supabase -> Project Settings -> API -> service_role (server only, never a VITE_ variable)
+//   VITE_SUPABASE_URL              already set for the app (SUPABASE_URL also works)
+// Run supabase/clerk-webhook.sql once first. No extra packages: the Svix signature is checked with Web Crypto.
 declare const process: { env: Record<string, string | undefined> };
+export const config = { runtime: "edge" };
 
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-/** Svix signature check (what Clerk uses): HMAC-SHA256 of `${id}.${timestamp}.${body}`. */
 async function verify(body: string, h: Headers, secret: string): Promise<boolean> {
   const id = h.get("svix-id"), ts = h.get("svix-timestamp"), sig = h.get("svix-signature");
   if (!id || !ts || !sig || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
@@ -18,37 +19,55 @@ async function verify(body: string, h: Headers, secret: string): Promise<boolean
   return sig.split(" ").some((p) => p.split(",")[1] === expected);
 }
 
+interface ClerkEvent {
+  type: string;
+  data: { id?: string; first_name?: string | null; last_name?: string | null; username?: string | null };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
   const env = process.env;
-  const secret = env.CLERK_WEBHOOK_SECRET, service = env.SUPABASE_SERVICE_ROLE_KEY;
-  const base = (env.VITE_SUPABASE_URL ?? "").replace(/\/+$/, "");
-  if (!secret || !service || !base) return new Response("Webhook not configured", { status: 500 });
+  const secret = env.CLERK_WEBHOOK_SIGNING_SECRET;
+  const supabaseUrl = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  // Say exactly which variable is missing (names only, never values) so the Clerk "Message Attempts" page shows it.
+  const missing = [
+    !secret && "CLERK_WEBHOOK_SIGNING_SECRET",
+    !supabaseUrl && "SUPABASE_URL or VITE_SUPABASE_URL",
+    !serviceKey && "SUPABASE_SERVICE_ROLE_KEY",
+  ].filter(Boolean);
+  if (missing.length) return new Response(`Webhook not configured. Missing: ${missing.join(", ")}`, { status: 500 });
 
   const body = await req.text();
   let ok = false;
-  try { ok = await verify(body, req.headers, secret); } catch { /* bad secret or headers */ }
+  try { ok = await verify(body, req.headers, secret!); } catch { /* malformed secret or headers */ }
   if (!ok) return new Response("Invalid signature", { status: 400 });
 
-  const evt = JSON.parse(body) as { type: string; data: { id?: string; first_name?: string | null; last_name?: string | null; username?: string | null } };
-  const rpc = (fn: string, args: object) =>
-    fetch(`${base}/rest/v1/rpc/${fn}`, {
-      method: "POST",
-      headers: { apikey: service, Authorization: `Bearer ${service}`, "content-type": "application/json" },
-      body: JSON.stringify(args),
-    });
+  let evt: ClerkEvent;
+  try { evt = JSON.parse(body) as ClerkEvent; } catch { return new Response("Bad payload", { status: 400 }); }
 
-  let res: Response | null = null;
+  let fn: string | null = null;
+  let args: Record<string, string> = {};
   if (evt.type === "user.created" && evt.data.id) {
     const d = evt.data;
-    const name = [d.first_name, d.last_name].filter(Boolean).join(" ") || d.username || "";
-    res = await rpc("create_author_for_user", { p_user_id: d.id, p_name: name });
+    fn = "create_author_for_user";
+    args = { p_user_id: d.id!, p_name: [d.first_name, d.last_name].filter(Boolean).join(" ") || d.username || "" };
   } else if (evt.type === "user.deleted" && evt.data.id) {
-    res = await rpc("delete_author_for_user", { p_user_id: evt.data.id });
+    fn = "delete_author_for_user";
+    args = { p_user_id: evt.data.id };
   }
-  if (res && !res.ok) {
-    console.error("[Fablebook] clerk webhook failed", evt.type, res.status, await res.text());
-    return new Response("Database error", { status: 500 }); // Clerk will retry
+  if (!fn) return new Response("ignored"); // other event types: acknowledge so Clerk doesn't retry
+
+  const res = await fetch(`${supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: serviceKey!, authorization: `Bearer ${serviceKey}`, "content-type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    console.error("clerk-webhook failed", evt.type, res.status, detail);
+    return new Response(`Database error ${res.status}: ${detail}`, { status: 500 }); // Clerk retries
   }
   return new Response("ok");
 }
